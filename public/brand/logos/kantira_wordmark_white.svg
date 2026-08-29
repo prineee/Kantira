@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 92" role="img" aria-labelledby="kantiraWordmarkWhiteTitle">
+  <title id="kantiraWordmarkWhiteTitle">KANTIRA Business OS</title>
+  <defs>
+    <linearGradient id="wmw-needle" x1="35.6" y1="50" x2="80.24" y2="18.32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4B8CFF"/>
+      <stop offset="1" stop-color="#00D4FF"/>
+    </linearGradient>
+    <linearGradient id="wmw-thread" x1="35.6" y1="51.44" x2="81.68" y2="81.68" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A78BFA"/>
+      <stop offset="1" stop-color="#00BFA5"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(0,-4) scale(0.86)">
+    <rect x="29.84" y="19.76" width="11.52" height="60.48" rx="5.76" fill="#FFFFFF"/>
+    <path d="M35.6,50 L80.24,18.32" stroke="url(#wmw-needle)" stroke-width="8.28" stroke-linecap="round"/>
+    <circle cx="75.92" cy="24.8" r="3.24" fill="#0A1B3D" stroke="#FFFFFF" stroke-width="1.2"/>
+    <path d="M35.6,51.44 Q53.6,58.64 81.68,81.68" fill="none" stroke="url(#wmw-thread)" stroke-width="5.04" stroke-linecap="round"/>
+    <circle cx="81.68" cy="81.68" r="3.24" fill="#00D4FF"/>
+  </g>
+
+  <text x="108" y="46" font-family="Poppins, 'Segoe UI', Arial, sans-serif" font-weight="700" font-size="32" letter-spacing="0.5" fill="#FFFFFF">KANTIRA</text>
+  <text x="109" y="68" font-family="Poppins, 'Segoe UI', Arial, sans-serif" font-weight="600" font-size="14" letter-spacing="3" fill="#00D4FF">BUSINESS OS</text>
+</svg>

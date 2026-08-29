@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="kantiraMarkTitle">
+  <title id="kantiraMarkTitle">KANTIRA mark</title>
+  <defs>
+    <linearGradient id="k-needle" x1="35.6" y1="50" x2="80.24" y2="18.32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1565FF"/>
+      <stop offset="1" stop-color="#00D4FF"/>
+    </linearGradient>
+    <linearGradient id="k-thread" x1="35.6" y1="51.44" x2="81.68" y2="81.68" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7C3AED"/>
+      <stop offset="1" stop-color="#00BFA5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- spine: solid royal blue so the mark reads on both white/light surfaces and navy/dark surfaces -->
+  <rect x="29.84" y="19.76" width="11.52" height="60.48" rx="5.76" fill="#1565FF"/>
+
+  <!-- needle (upper diagonal), rounded like a sewing needle, with an eye near the tip -->
+  <path d="M35.6,50 L80.24,18.32" stroke="url(#k-needle)" stroke-width="8.28" stroke-linecap="round"/>
+  <circle cx="75.92" cy="24.8" r="3.24" fill="#FFFFFF" stroke="#0A1B3D" stroke-width="1.2"/>
+
+  <!-- thread (lower diagonal), curved, ending in a knot -->
+  <path d="M35.6,51.44 Q53.6,58.64 81.68,81.68" fill="none" stroke="url(#k-thread)" stroke-width="5.04" stroke-linecap="round"/>
+  <circle cx="81.68" cy="81.68" r="3.24" fill="#00BFA5"/>
+</svg>

@@ -1,0 +1,13 @@
+/* KANTIRA Business OS — brand colour tokens.
+   Single source of truth; components should reference these (via the
+   `brand-*` Tailwind colors in tailwind.config.ts) instead of hard-coding hex. */
+:root {
+  --kantira-primary-navy: #0a1b3d;
+  --kantira-royal-blue: #1565ff;
+  --kantira-cyan: #00d4ff;
+  --kantira-purple: #7c3aed;
+  --kantira-accent-teal: #00bfa5;
+  --kantira-slate: #64748b;
+  --kantira-light-gray: #f1f5f9;
+  --kantira-white: #ffffff;
+}
