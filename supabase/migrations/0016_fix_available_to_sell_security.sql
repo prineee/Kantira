@@ -1,0 +1,45 @@
+-- KANTIRA Business OS — available_to_sell: add missing security_invoker
+--
+-- FINDING (from PHASE_5_MASTER_RECOVERY_AND_ROADMAP.md's recovery report):
+-- available_to_sell was the only view in the schema without `security_invoker
+-- = true` (every sibling — stock_balances, inventory_valuation,
+-- sale_line_cogs, sale_profitability, loyalty_balances — has it).
+--
+-- INVESTIGATION RESULT (tested empirically against isolated disposable
+-- fixtures, two orgs, before AND after this change, as both the owning
+-- org's staff and a different org's staff):
+--   - The originally-suspected cross-org leak for the `authenticated` role
+--     does NOT reproduce. available_to_sell is built entirely on top of
+--     stock_balances, which already has security_invoker=true. Postgres's
+--     per-relation checkAsUser resolution means a security_invoker=true
+--     view enforces RLS using the real top-level caller's role regardless
+--     of what any OUTER (owner-mode) view wraps it in -- this is the
+--     documented "composability" property of security_invoker. So the
+--     row-set available_to_sell can ever produce is already bounded by
+--     stock_balances' own correct per-org filtering.
+--   - available_to_sell's own direct reference to stock_reservations DOES
+--     run in owner-mode (bypassing that table's RLS) before this fix, but
+--     it is correlated back onto stock_balances by
+--     (organization_id, store_id, item_id), so it can never attach
+--     another organization's reservation numbers to a row stock_balances
+--     didn't already produce for the querying organization.
+--   - `anon` has no table-level SELECT grant on stock_balances/
+--     stock_movements/stock_reservations at all (confirmed against the
+--     authoritative database), so it cannot reach this view directly
+--     regardless of security_invoker.
+--
+-- This migration is therefore a defense-in-depth / consistency correction,
+-- not a fix for a confirmed exploit. Applying security_invoker=true is a
+-- pure hardening step: it costs nothing (get_item_public_availability(),
+-- the one function that reads this view, is itself SECURITY DEFINER and
+-- unaffected either way -- verified identical before/after), and it
+-- removes a latent inconsistency that would matter if this view's
+-- definition or its dependents ever change in a way that no longer
+-- happens to correlate perfectly back onto an already-safe inner view.
+--
+-- Nothing else changes: no table, RLS policy, grant, or function is
+-- touched. This does not modify or replace 0015 -- the original
+-- (unmodified) view definition is preserved there as the accurate record
+-- of what was actually recovered from the authoritative database.
+
+ALTER VIEW public.available_to_sell SET (security_invoker = true);

@@ -78,6 +78,7 @@ export type Database = {
           action: Database["public"]["Enums"]["audit_action"]
           changed_at: string
           changed_by: string | null
+          changed_by_customer_id: string | null
           id: string
           new_data: Json | null
           old_data: Json | null
@@ -89,6 +90,7 @@ export type Database = {
           action: Database["public"]["Enums"]["audit_action"]
           changed_at?: string
           changed_by?: string | null
+          changed_by_customer_id?: string | null
           id?: string
           new_data?: Json | null
           old_data?: Json | null
@@ -100,6 +102,7 @@ export type Database = {
           action?: Database["public"]["Enums"]["audit_action"]
           changed_at?: string
           changed_by?: string | null
+          changed_by_customer_id?: string | null
           id?: string
           new_data?: Json | null
           old_data?: Json | null
@@ -108,6 +111,13 @@ export type Database = {
           table_name?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "audit_log_changed_by_customer_id_fkey"
+            columns: ["changed_by_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "audit_log_changed_by_fkey"
             columns: ["changed_by"]
@@ -120,6 +130,102 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_sessions: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          declared_closing_cash: number | null
+          expected_cash: number | null
+          id: string
+          notes: string | null
+          opened_at: string
+          opened_by: string
+          opening_cash: number
+          organization_id: string
+          status: Database["public"]["Enums"]["cash_session_status"]
+          store_id: string
+          terminal_id: string
+          updated_at: string
+          variance: number | null
+          variance_reason: string | null
+        }
+        Insert: {
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          declared_closing_cash?: number | null
+          expected_cash?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string
+          opening_cash: number
+          organization_id?: string
+          status?: Database["public"]["Enums"]["cash_session_status"]
+          store_id: string
+          terminal_id: string
+          updated_at?: string
+          variance?: number | null
+          variance_reason?: string | null
+        }
+        Update: {
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          declared_closing_cash?: number | null
+          expected_cash?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string
+          opening_cash?: number
+          organization_id?: string
+          status?: Database["public"]["Enums"]["cash_session_status"]
+          store_id?: string
+          terminal_id?: string
+          updated_at?: string
+          variance?: number | null
+          variance_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_sessions_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "pos_terminals"
             referencedColumns: ["id"]
           },
         ]
@@ -187,6 +293,75 @@ export type Database = {
             columns: ["parent_account_id"]
             isOneToOne: false
             referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_addresses: {
+        Row: {
+          city: string
+          country: string
+          created_at: string
+          customer_id: string
+          id: string
+          is_default: boolean
+          label: string | null
+          line1: string
+          line2: string | null
+          organization_id: string
+          phone: string
+          postal_code: string
+          recipient_name: string
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          city: string
+          country?: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          is_default?: boolean
+          label?: string | null
+          line1: string
+          line2?: string | null
+          organization_id: string
+          phone: string
+          postal_code: string
+          recipient_name: string
+          state: string
+          updated_at?: string
+        }
+        Update: {
+          city?: string
+          country?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          is_default?: boolean
+          label?: string | null
+          line1?: string
+          line2?: string | null
+          organization_id?: string
+          phone?: string
+          postal_code?: string
+          recipient_name?: string
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_addresses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_addresses_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -309,6 +484,7 @@ export type Database = {
       }
       customers: {
         Row: {
+          auth_user_id: string | null
           billing_address: string | null
           created_at: string
           created_by: string
@@ -323,6 +499,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auth_user_id?: string | null
           billing_address?: string | null
           created_at?: string
           created_by?: string
@@ -337,6 +514,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auth_user_id?: string | null
           billing_address?: string | null
           created_at?: string
           created_by?: string
@@ -715,11 +893,401 @@ export type Database = {
           },
         ]
       }
+      loyalty_accounts: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          organization_id: string
+          status: Database["public"]["Enums"]["loyalty_account_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          organization_id?: string
+          status?: Database["public"]["Enums"]["loyalty_account_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          organization_id?: string
+          status?: Database["public"]["Enums"]["loyalty_account_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_accounts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_accounts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_programs: {
+        Row: {
+          active: boolean
+          created_at: string
+          earn_amount: number
+          earn_points: number
+          id: string
+          maximum_redemption_percentage: number
+          minimum_redemption_points: number
+          name: string
+          organization_id: string
+          points_expiry_days: number | null
+          redemption_points: number
+          redemption_value: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          earn_amount?: number
+          earn_points?: number
+          id?: string
+          maximum_redemption_percentage?: number
+          minimum_redemption_points?: number
+          name: string
+          organization_id?: string
+          points_expiry_days?: number | null
+          redemption_points?: number
+          redemption_value?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          earn_amount?: number
+          earn_points?: number
+          id?: string
+          maximum_redemption_percentage?: number
+          minimum_redemption_points?: number
+          name?: string
+          organization_id?: string
+          points_expiry_days?: number | null
+          redemption_points?: number
+          redemption_value?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_programs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_transactions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          loyalty_account_id: string
+          organization_id: string
+          points: number
+          reason: string | null
+          reference_transaction_id: string | null
+          source_id: string | null
+          source_type: string
+          transaction_type: Database["public"]["Enums"]["loyalty_transaction_type"]
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          loyalty_account_id: string
+          organization_id?: string
+          points: number
+          reason?: string | null
+          reference_transaction_id?: string | null
+          source_id?: string | null
+          source_type: string
+          transaction_type: Database["public"]["Enums"]["loyalty_transaction_type"]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          loyalty_account_id?: string
+          organization_id?: string
+          points?: number
+          reason?: string | null
+          reference_transaction_id?: string | null
+          source_id?: string | null
+          source_type?: string
+          transaction_type?: Database["public"]["Enums"]["loyalty_transaction_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_transactions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_loyalty_account_id_fkey"
+            columns: ["loyalty_account_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_loyalty_account_id_fkey"
+            columns: ["loyalty_account_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_balances"
+            referencedColumns: ["loyalty_account_id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_reference_transaction_id_fkey"
+            columns: ["reference_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      online_order_lines: {
+        Row: {
+          created_at: string
+          discount_amount: number
+          id: string
+          item_id: string
+          item_name_snapshot: string
+          line_total: number
+          order_id: string
+          organization_id: string
+          quantity: number
+          tax_amount: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          discount_amount?: number
+          id?: string
+          item_id: string
+          item_name_snapshot: string
+          line_total: number
+          order_id: string
+          organization_id: string
+          quantity: number
+          tax_amount?: number
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          discount_amount?: number
+          id?: string
+          item_id?: string
+          item_name_snapshot?: string
+          line_total?: number
+          order_id?: string
+          organization_id?: string
+          quantity?: number
+          tax_amount?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "online_order_lines_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "online_order_lines_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "online_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "online_order_lines_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      online_orders: {
+        Row: {
+          billing_address_id: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          channel: string
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          delivered_at: string | null
+          discount_total: number
+          fulfillment_store_id: string | null
+          grand_total: number
+          id: string
+          idempotency_key: string | null
+          loyalty_points_earned: number
+          loyalty_points_redeemed: number
+          order_number: string
+          organization_id: string
+          packed_at: string | null
+          payment_status: string
+          placed_at: string
+          processing_at: string | null
+          sale_id: string | null
+          shipping_address_id: string
+          shipping_total: number
+          status: string
+          store_assigned_at: string | null
+          subtotal: number
+          tax_total: number
+          updated_at: string
+        }
+        Insert: {
+          billing_address_id?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          channel?: string
+          confirmed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          delivered_at?: string | null
+          discount_total?: number
+          fulfillment_store_id?: string | null
+          grand_total: number
+          id?: string
+          idempotency_key?: string | null
+          loyalty_points_earned?: number
+          loyalty_points_redeemed?: number
+          order_number: string
+          organization_id: string
+          packed_at?: string | null
+          payment_status?: string
+          placed_at?: string
+          processing_at?: string | null
+          sale_id?: string | null
+          shipping_address_id: string
+          shipping_total?: number
+          status?: string
+          store_assigned_at?: string | null
+          subtotal: number
+          tax_total: number
+          updated_at?: string
+        }
+        Update: {
+          billing_address_id?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          channel?: string
+          confirmed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          delivered_at?: string | null
+          discount_total?: number
+          fulfillment_store_id?: string | null
+          grand_total?: number
+          id?: string
+          idempotency_key?: string | null
+          loyalty_points_earned?: number
+          loyalty_points_redeemed?: number
+          order_number?: string
+          organization_id?: string
+          packed_at?: string | null
+          payment_status?: string
+          placed_at?: string
+          processing_at?: string | null
+          sale_id?: string | null
+          shipping_address_id?: string
+          shipping_total?: number
+          status?: string
+          store_assigned_at?: string | null
+          subtotal?: number
+          tax_total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "online_orders_billing_address_id_fkey"
+            columns: ["billing_address_id"]
+            isOneToOne: false
+            referencedRelation: "customer_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "online_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "online_orders_fulfillment_store_id_fkey"
+            columns: ["fulfillment_store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "online_orders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "online_orders_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sale_profitability"
+            referencedColumns: ["sale_id"]
+          },
+          {
+            foreignKeyName: "online_orders_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "online_orders_shipping_address_id_fkey"
+            columns: ["shipping_address_id"]
+            isOneToOne: false
+            referencedRelation: "customer_addresses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string
           gstin: string | null
           id: string
+          is_public_storefront: boolean
           legal_name: string | null
           name: string
           updated_at: string
@@ -728,6 +1296,7 @@ export type Database = {
           created_at?: string
           gstin?: string | null
           id?: string
+          is_public_storefront?: boolean
           legal_name?: string | null
           name: string
           updated_at?: string
@@ -736,11 +1305,168 @@ export type Database = {
           created_at?: string
           gstin?: string | null
           id?: string
+          is_public_storefront?: boolean
           legal_name?: string | null
           name?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      payment_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          organization_id: string
+          payment_intent_id: string
+          processed_at: string | null
+          provider: string
+          provider_event_id: string
+          raw_payload: Json
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          organization_id: string
+          payment_intent_id: string
+          processed_at?: string | null
+          provider: string
+          provider_event_id: string
+          raw_payload: Json
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          organization_id?: string
+          payment_intent_id?: string
+          processed_at?: string | null
+          provider?: string
+          provider_event_id?: string
+          raw_payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_events_payment_intent_id_fkey"
+            columns: ["payment_intent_id"]
+            isOneToOne: false
+            referencedRelation: "payment_intents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_intents: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          order_id: string
+          organization_id: string
+          provider: string
+          provider_intent_id: string | null
+          provider_payment_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          id?: string
+          order_id: string
+          organization_id: string
+          provider: string
+          provider_intent_id?: string | null
+          provider_payment_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          order_id?: string
+          organization_id?: string
+          provider?: string
+          provider_intent_id?: string | null
+          provider_payment_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_intents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "online_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_intents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_terminals: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          organization_id: string
+          store_id: string
+          terminal_code: string
+          terminal_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          organization_id?: string
+          store_id: string
+          terminal_code: string
+          terminal_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          organization_id?: string
+          store_id?: string
+          terminal_code?: string
+          terminal_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_terminals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_terminals_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_categories: {
         Row: {
@@ -783,6 +1509,70 @@ export type Database = {
             columns: ["parent_category_id"]
             isOneToOne: false
             referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_media: {
+        Row: {
+          alt_text: string | null
+          created_at: string
+          created_by: string
+          id: string
+          is_primary: boolean
+          item_id: string
+          media_type: string
+          organization_id: string
+          sort_order: number
+          storage_path: string
+          updated_at: string
+        }
+        Insert: {
+          alt_text?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_primary?: boolean
+          item_id: string
+          media_type?: string
+          organization_id?: string
+          sort_order?: number
+          storage_path: string
+          updated_at?: string
+        }
+        Update: {
+          alt_text?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_primary?: boolean
+          item_id?: string
+          media_type?: string
+          organization_id?: string
+          sort_order?: number
+          storage_path?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_media_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_media_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_media_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -1349,6 +2139,7 @@ export type Database = {
           invoice_date: string
           invoice_number: string
           journal_entry_id: string | null
+          loyalty_points_redeemed: number
           notes: string | null
           organization_id: string
           payment_method: Database["public"]["Enums"]["payment_method"]
@@ -1375,6 +2166,7 @@ export type Database = {
           invoice_date?: string
           invoice_number: string
           journal_entry_id?: string | null
+          loyalty_points_redeemed?: number
           notes?: string | null
           organization_id?: string
           payment_method?: Database["public"]["Enums"]["payment_method"]
@@ -1401,6 +2193,7 @@ export type Database = {
           invoice_date?: string
           invoice_number?: string
           journal_entry_id?: string | null
+          loyalty_points_redeemed?: number
           notes?: string | null
           organization_id?: string
           payment_method?: Database["public"]["Enums"]["payment_method"]
@@ -1823,6 +2616,138 @@ export type Database = {
           },
         ]
       }
+      stock_reservations: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          id: string
+          item_id: string
+          online_order_id: string
+          online_order_line_id: string
+          organization_id: string
+          quantity: number
+          released_at: string | null
+          status: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          id?: string
+          item_id: string
+          online_order_id: string
+          online_order_line_id: string
+          organization_id: string
+          quantity: number
+          released_at?: string | null
+          status?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          id?: string
+          item_id?: string
+          online_order_id?: string
+          online_order_line_id?: string
+          organization_id?: string
+          quantity?: number
+          released_at?: string | null
+          status?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_reservations_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservations_online_order_id_fkey"
+            columns: ["online_order_id"]
+            isOneToOne: false
+            referencedRelation: "online_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservations_online_order_line_id_fkey"
+            columns: ["online_order_line_id"]
+            isOneToOne: false
+            referencedRelation: "online_order_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservations_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_shipping_config: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          organization_id: string
+          provider: string
+          provider_location_id: string | null
+          provider_location_name: string | null
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          organization_id: string
+          provider: string
+          provider_location_id?: string | null
+          provider_location_name?: string | null
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          organization_id?: string
+          provider?: string
+          provider_location_id?: string | null
+          provider_location_name?: string | null
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_shipping_config_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_shipping_config_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           address: string | null
@@ -2089,6 +3014,39 @@ export type Database = {
       }
     }
     Views: {
+      available_to_sell: {
+        Row: {
+          available_quantity: number | null
+          item_id: string | null
+          organization_id: string | null
+          quantity_on_hand: number | null
+          reserved_quantity: number | null
+          store_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_valuation: {
         Row: {
           average_cost: number | null
@@ -2118,6 +3076,32 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_balances: {
+        Row: {
+          customer_id: string | null
+          lifetime_earned: number | null
+          lifetime_redeemed: number | null
+          loyalty_account_id: string | null
+          organization_id: string | null
+          points_balance: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_accounts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_accounts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -2208,6 +3192,14 @@ export type Database = {
       }
     }
     Functions: {
+      adjust_customer_points: {
+        Args: { p_customer_id: string; p_points: number; p_reason: string }
+        Returns: string
+      }
+      advance_online_order_status: {
+        Args: { p_new_status: string; p_order_id: string }
+        Returns: undefined
+      }
       assert_stock_available: {
         Args: {
           p_item_id: string
@@ -2216,13 +3208,58 @@ export type Database = {
         }
         Returns: undefined
       }
+      assign_online_order_store: {
+        Args: { p_order_id: string; p_store_id: string }
+        Returns: undefined
+      }
+      auto_allocate_online_order_store: {
+        Args: { p_order_id: string }
+        Returns: string
+      }
       cancel_customer_receipt: {
         Args: { p_reason: string; p_receipt_id: string }
         Returns: string
       }
+      cancel_online_order: {
+        Args: { p_order_id: string; p_reason?: string }
+        Returns: undefined
+      }
       cancel_supplier_payment: {
         Args: { p_payment_id: string; p_reason: string }
         Returns: string
+      }
+      claim_customer_identity: { Args: never; Returns: string }
+      close_cash_session: {
+        Args: {
+          p_declared_closing_cash: number
+          p_session_id: string
+          p_variance_reason?: string
+        }
+        Returns: {
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          declared_closing_cash: number | null
+          expected_cash: number | null
+          id: string
+          notes: string | null
+          opened_at: string
+          opened_by: string
+          opening_cash: number
+          organization_id: string
+          status: Database["public"]["Enums"]["cash_session_status"]
+          store_id: string
+          terminal_id: string
+          updated_at: string
+          variance: number | null
+          variance_reason: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cash_sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       control_type_for_payment_method: {
         Args: { p_method: Database["public"]["Enums"]["payment_method"] }
@@ -2249,6 +3286,16 @@ export type Database = {
           p_source_id?: string
           p_source_type?: Database["public"]["Enums"]["journal_source_type"]
           p_store_id?: string
+        }
+        Returns: string
+      }
+      create_online_order: {
+        Args: {
+          p_billing_address_id?: string
+          p_channel?: string
+          p_idempotency_key?: string
+          p_lines: Json
+          p_shipping_address_id: string
         }
         Returns: string
       }
@@ -2285,11 +3332,24 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      customer_belongs_to_org: {
+        Args: { p_customer_id: string }
+        Returns: boolean
+      }
+      delete_product_media: { Args: { p_media_id: string }; Returns: string }
+      ensure_loyalty_account: {
+        Args: { p_customer_id: string }
+        Returns: string
+      }
       get_control_account: {
         Args: {
           p_control_type: Database["public"]["Enums"]["control_account_type"]
         }
         Returns: string
+      }
+      get_item_public_availability: {
+        Args: { p_item_id: string }
+        Returns: boolean
       }
       get_item_store_average_cost: {
         Args: { p_item_id: string; p_store_id: string }
@@ -2300,6 +3360,7 @@ export type Database = {
         Returns: string
       }
       has_store_access: { Args: { target_store_id: string }; Returns: boolean }
+      is_org_public_storefront: { Args: { p_org_id: string }; Returns: boolean }
       next_document_number: {
         Args: {
           p_sequence_type: Database["public"]["Enums"]["document_sequence_type"]
@@ -2331,6 +3392,20 @@ export type Database = {
         }
         Returns: string
       }
+      preview_loyalty_redemption: {
+        Args: { p_customer_id: string; p_points: number }
+        Returns: {
+          available_points: number
+          message: string
+          redemption_value: number
+          valid: boolean
+        }[]
+      }
+      primary_storefront_org_id: { Args: never; Returns: string }
+      purchase_belongs_to_org: {
+        Args: { p_purchase_id: string }
+        Returns: boolean
+      }
       purchase_line_net_unit_cost: {
         Args: { p_purchase_line_id: string }
         Returns: number
@@ -2357,11 +3432,38 @@ export type Database = {
         }
         Returns: string
       }
+      reorder_product_media: {
+        Args: { p_item_id: string; p_media_ids: string[] }
+        Returns: undefined
+      }
+      reserve_all_lines_at_store: {
+        Args: { p_order_id: string; p_store_id: string }
+        Returns: undefined
+      }
+      reserve_online_order_stock: {
+        Args: { p_order_id: string }
+        Returns: number
+      }
+      sale_belongs_to_org: { Args: { p_sale_id: string }; Returns: boolean }
+      set_primary_product_media: {
+        Args: { p_media_id: string }
+        Returns: undefined
+      }
+      store_belongs_to_org: { Args: { p_store_id: string }; Returns: boolean }
+      supplier_belongs_to_org: {
+        Args: { p_supplier_id: string }
+        Returns: boolean
+      }
+      terminal_belongs_to_store: {
+        Args: { p_store_id: string; p_terminal_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       account_type: "ASSET" | "LIABILITY" | "EQUITY" | "INCOME" | "EXPENSE"
       audit_action: "INSERT" | "UPDATE" | "DELETE"
       balance_side: "DEBIT" | "CREDIT"
+      cash_session_status: "OPEN" | "CLOSED"
       control_account_type: "NONE" | "CUSTOMER" | "SUPPLIER" | "CASH" | "BANK"
       cost_basis_source:
         | "WEIGHTED_AVERAGE"
@@ -2391,6 +3493,14 @@ export type Database = {
         | "SALES_REVENUE"
         | "COGS"
         | "INVENTORY_LOSS"
+      loyalty_account_status: "ACTIVE" | "SUSPENDED" | "CLOSED"
+      loyalty_transaction_type:
+        | "EARN"
+        | "REDEEM"
+        | "REVERSAL"
+        | "EXPIRY"
+        | "BONUS"
+        | "ADJUSTMENT"
       payment_method: "CASH" | "BANK" | "UPI" | "CARD" | "CREDIT" | "OTHER"
       stock_adjustment_reason: "DAMAGE" | "LOSS" | "FOUND" | "RECOUNT" | "OTHER"
       stock_direction: "IN" | "OUT"
@@ -2549,6 +3659,7 @@ export const Constants = {
       account_type: ["ASSET", "LIABILITY", "EQUITY", "INCOME", "EXPENSE"],
       audit_action: ["INSERT", "UPDATE", "DELETE"],
       balance_side: ["DEBIT", "CREDIT"],
+      cash_session_status: ["OPEN", "CLOSED"],
       control_account_type: ["NONE", "CUSTOMER", "SUPPLIER", "CASH", "BANK"],
       cost_basis_source: [
         "WEIGHTED_AVERAGE",
@@ -2581,6 +3692,15 @@ export const Constants = {
         "SALES_REVENUE",
         "COGS",
         "INVENTORY_LOSS",
+      ],
+      loyalty_account_status: ["ACTIVE", "SUSPENDED", "CLOSED"],
+      loyalty_transaction_type: [
+        "EARN",
+        "REDEEM",
+        "REVERSAL",
+        "EXPIRY",
+        "BONUS",
+        "ADJUSTMENT",
       ],
       payment_method: ["CASH", "BANK", "UPI", "CARD", "CREDIT", "OTHER"],
       stock_adjustment_reason: ["DAMAGE", "LOSS", "FOUND", "RECOUNT", "OTHER"],

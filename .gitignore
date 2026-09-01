@@ -21,3 +21,6 @@ next-env.d.ts
 .vercel
 *.tsbuildinfo
 dev_out.txt
+
+# local DB forensics/investigation scratch (dumps, grant listings, diffs)
+/db_backups/
