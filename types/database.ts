@@ -692,6 +692,7 @@ export type Database = {
           track_inventory: boolean
           uom_id: string
           updated_at: string
+          weight_kg: number | null
         }
         Insert: {
           barcode?: string | null
@@ -712,6 +713,7 @@ export type Database = {
           track_inventory?: boolean
           uom_id: string
           updated_at?: string
+          weight_kg?: number | null
         }
         Update: {
           barcode?: string | null
@@ -732,6 +734,7 @@ export type Database = {
           track_inventory?: boolean
           uom_id?: string
           updated_at?: string
+          weight_kg?: number | null
         }
         Relationships: [
           {
@@ -3340,6 +3343,16 @@ export type Database = {
       ensure_loyalty_account: {
         Args: { p_customer_id: string }
         Returns: string
+      }
+      get_checkout_fulfillment_candidates: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          store_id: string
+          store_code: string
+          created_at: string
+          provider_location_id: string | null
+          provider_location_name: string | null
+        }[]
       }
       get_control_account: {
         Args: {
