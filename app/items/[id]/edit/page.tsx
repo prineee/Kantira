@@ -57,13 +57,21 @@ export default async function EditItemPage({
       role={profile.role}
       signOutAction={signOut}
     >
-      <div className="mb-6">
-        <Link href="/items" className="text-sm font-medium text-brand-royal">
-          ← Back to items
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <Link href="/items" className="text-sm font-medium text-brand-royal">
+            ← Back to items
+          </Link>
+          <h2 className="mt-2 text-xl font-bold text-kantira-navy-900">
+            Edit item
+          </h2>
+        </div>
+        <Link
+          href={`/items/${item.id}/media`}
+          className="text-sm font-medium text-brand-royal"
+        >
+          Manage images →
         </Link>
-        <h2 className="mt-2 text-xl font-bold text-kantira-navy-900">
-          Edit item
-        </h2>
       </div>
 
       <section className={cardClass}>
