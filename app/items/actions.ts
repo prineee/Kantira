@@ -16,6 +16,16 @@ function parseNumber(raw: FormDataEntryValue | null, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+// weight_kg is nullable (matches the items.weight_kg column, migration 0019):
+// an empty field means "not configured yet", not zero.
+function parseNullableNumber(raw: FormDataEntryValue | null): number | null {
+  if (raw === null) return null;
+  const s = String(raw).trim();
+  if (s === "") return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
 function readItemFields(formData: FormData) {
   const sku = String(formData.get("sku") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
@@ -28,6 +38,7 @@ function readItemFields(formData: FormData) {
   const selling_price = parseNumber(formData.get("selling_price"), 0);
   const tax_rate_percent = parseNumber(formData.get("tax_rate_percent"), 0);
   const reorder_level = parseNumber(formData.get("reorder_level"), 0);
+  const weight_kg = parseNullableNumber(formData.get("weight_kg"));
   const track_inventory = formData.get("track_inventory") === "on";
 
   return {
@@ -42,6 +53,7 @@ function readItemFields(formData: FormData) {
     selling_price,
     tax_rate_percent,
     reorder_level,
+    weight_kg,
     track_inventory,
   };
 }
@@ -59,6 +71,9 @@ function validateItemFields(
     fields.reorder_level < 0
   ) {
     return "Numeric fields cannot be negative.";
+  }
+  if (fields.weight_kg !== null && fields.weight_kg < 0) {
+    return "Weight cannot be negative.";
   }
   return null;
 }
@@ -91,6 +106,7 @@ export async function createItem(
     selling_price: fields.selling_price,
     tax_rate_percent: fields.tax_rate_percent,
     reorder_level: fields.reorder_level,
+    weight_kg: fields.weight_kg,
     track_inventory: fields.track_inventory,
   });
 
@@ -133,6 +149,7 @@ export async function updateItem(
       selling_price: fields.selling_price,
       tax_rate_percent: fields.tax_rate_percent,
       reorder_level: fields.reorder_level,
+      weight_kg: fields.weight_kg,
       track_inventory: fields.track_inventory,
       is_active,
     })

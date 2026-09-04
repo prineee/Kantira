@@ -22,7 +22,7 @@ export default async function EditItemPage({
       supabase
         .from("items")
         .select(
-          "id, sku, name, category_id, uom_id, barcode, hsn_code, description, cost_price, selling_price, tax_rate_percent, reorder_level, track_inventory, is_active",
+          "id, sku, name, category_id, uom_id, barcode, hsn_code, description, cost_price, selling_price, tax_rate_percent, reorder_level, weight_kg, track_inventory, is_active",
         )
         .eq("id", params.id)
         .maybeSingle(),
@@ -85,6 +85,7 @@ export default async function EditItemPage({
               selling_price: item.selling_price,
               tax_rate_percent: item.tax_rate_percent,
               reorder_level: item.reorder_level,
+              weight_kg: item.weight_kg,
               track_inventory: item.track_inventory,
               is_active: item.is_active,
             }}

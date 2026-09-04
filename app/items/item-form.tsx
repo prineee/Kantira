@@ -46,6 +46,7 @@ export function ItemForm({
     selling_price: number;
     tax_rate_percent: number;
     reorder_level: number;
+    weight_kg: number | null;
     track_inventory: boolean;
     is_active: boolean;
   };
@@ -165,6 +166,18 @@ export function ItemForm({
             min="0"
             name="reorder_level"
             defaultValue={initial?.reorder_level ?? 0}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Weight (kg)</label>
+          <input
+            type="number"
+            step="0.001"
+            min="0"
+            name="weight_kg"
+            placeholder="Required before this item can ship"
+            defaultValue={initial?.weight_kg ?? ""}
             className={inputClass}
           />
         </div>
