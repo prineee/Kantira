@@ -13,10 +13,12 @@ import {
   Boxes,
   ShoppingCart,
   Receipt,
+  Store,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/stores", label: "Stores", icon: Store },
   { href: "/items", label: "Items", icon: Package },
   { href: "/customers", label: "Customers", icon: Users },
   { href: "/suppliers", label: "Suppliers", icon: Truck },

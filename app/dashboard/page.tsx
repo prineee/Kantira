@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LogOut, Store as StoreIcon, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "./actions";
@@ -121,11 +122,16 @@ export default async function DashboardPage() {
 
       <div className="mx-auto max-w-5xl px-6 py-8">
         <section className="rounded-card border border-kantira-navy-100 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center gap-2">
-            <StoreIcon size={18} className="text-brand-royal" />
-            <h2 className="text-base font-semibold text-kantira-navy-900">
-              Stores
-            </h2>
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <StoreIcon size={18} className="text-brand-royal" />
+              <h2 className="text-base font-semibold text-kantira-navy-900">
+                Stores
+              </h2>
+            </div>
+            <Link href="/stores" className="text-sm font-medium text-brand-royal">
+              Manage stores →
+            </Link>
           </div>
 
           {stores && stores.length > 0 ? (
@@ -158,7 +164,11 @@ export default async function DashboardPage() {
             </ul>
           ) : (
             <p className="text-sm text-brand-slate">
-              No stores yet. Store management is added in Phase 2.
+              No stores yet.{" "}
+              <Link href="/stores" className="font-medium text-brand-royal">
+                Add your first store
+              </Link>
+              .
             </p>
           )}
         </section>
