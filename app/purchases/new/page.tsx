@@ -14,21 +14,27 @@ export default async function NewPurchasePage() {
     redirect("/purchases");
   }
 
-  const [{ data: stores }, { data: suppliers }, { data: items }] = await Promise.all([
-    supabase.from("stores").select("id, store_code, store_name").order("store_code"),
-    supabase
-      .from("suppliers")
-      .select("id, supplier_code, name")
-      .eq("is_active", true)
-      .order("name"),
-    supabase
-      .from("items")
-      .select(
-        "id, sku, name, cost_price, tax_rate_percent, uom_id, units_of_measurement(code)",
-      )
-      .eq("is_active", true)
-      .order("name"),
-  ]);
+  const [{ data: stores }, { data: suppliers }, { data: items }, { data: units }] =
+    await Promise.all([
+      supabase.from("stores").select("id, store_code, store_name").order("store_code"),
+      supabase
+        .from("suppliers")
+        .select("id, supplier_code, name")
+        .eq("is_active", true)
+        .order("name"),
+      // items_catalog_for_staff() (not the items table directly): a
+      // SECURITY DEFINER RPC scoped to the caller's own organization,
+      // returning cost_price only to an authenticated staff member — see
+      // migration 0022. The unit code is looked up from the units query
+      // below instead of a PostgREST embed (RPC results don't embed
+      // relations).
+      supabase
+        .rpc("items_catalog_for_staff")
+        .select("id, sku, name, cost_price, tax_rate_percent, uom_id")
+        .eq("is_active", true)
+        .order("name"),
+      supabase.from("units_of_measurement").select("id, code"),
+    ]);
 
   const storeOptions = (stores ?? []).map((s) => ({
     id: s.id,
@@ -38,14 +44,15 @@ export default async function NewPurchasePage() {
     id: s.id,
     label: `${s.supplier_code} — ${s.name}`,
   }));
+  const unitCodeById = new Map((units ?? []).map((u) => [u.id, u.code]));
   const itemOptions = (items ?? []).map((i) => ({
-    id: i.id,
-    sku: i.sku,
-    name: i.name,
-    uomId: i.uom_id,
-    uomLabel: i.units_of_measurement?.code ?? "",
-    defaultRate: i.cost_price,
-    taxRatePercent: i.tax_rate_percent,
+    id: i.id ?? "",
+    sku: i.sku ?? "",
+    name: i.name ?? "",
+    uomId: i.uom_id ?? "",
+    uomLabel: (i.uom_id && unitCodeById.get(i.uom_id)) ?? "",
+    defaultRate: i.cost_price ?? 0,
+    taxRatePercent: i.tax_rate_percent ?? 0,
   }));
 
   return (

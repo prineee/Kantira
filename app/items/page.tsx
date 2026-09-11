@@ -19,10 +19,16 @@ export default async function ItemsPage() {
 
   const [{ data: items }, { data: categories }, { data: units }] =
     await Promise.all([
+      // items_catalog_for_staff() (not the items table directly): a
+      // SECURITY DEFINER RPC scoped to the caller's own organization,
+      // returning cost_price only to an authenticated staff member — see
+      // migration 0022. category/unit names are joined below from the two
+      // queries this page already runs for the create-item form, rather
+      // than via a PostgREST embed (RPC results don't embed relations).
       supabase
-        .from("items")
+        .rpc("items_catalog_for_staff")
         .select(
-          "id, sku, name, barcode, cost_price, selling_price, tax_rate_percent, reorder_level, track_inventory, is_active, product_categories(name), units_of_measurement(code)",
+          "id, sku, name, barcode, cost_price, selling_price, tax_rate_percent, reorder_level, track_inventory, is_active, category_id, uom_id",
         )
         .order("name"),
       supabase
@@ -45,6 +51,8 @@ export default async function ItemsPage() {
     id: u.id,
     label: `${u.code} — ${u.name}`,
   }));
+  const categoryNameById = new Map((categories ?? []).map((c) => [c.id, c.name]));
+  const unitCodeById = new Map((units ?? []).map((u) => [u.id, u.code]));
 
   return (
     <KantiraShell
@@ -113,7 +121,7 @@ export default async function ItemsPage() {
               </thead>
               <tbody className="divide-y divide-kantira-navy-50">
                 {items.map((item) => (
-                  <tr key={item.id}>
+                  <tr key={item.id ?? item.sku ?? ""}>
                     <td className="py-2.5 pr-4 font-mono text-xs text-kantira-navy-700">
                       {item.sku}
                     </td>
@@ -121,19 +129,19 @@ export default async function ItemsPage() {
                       {item.name}
                     </td>
                     <td className="py-2.5 pr-4 text-brand-slate">
-                      {item.product_categories?.name ?? "—"}
+                      {(item.category_id && categoryNameById.get(item.category_id)) ?? "—"}
                     </td>
                     <td className="py-2.5 pr-4 text-brand-slate">
-                      {item.units_of_measurement?.code ?? "—"}
+                      {(item.uom_id && unitCodeById.get(item.uom_id)) ?? "—"}
                     </td>
                     <td className="py-2.5 pr-4 text-right text-kantira-navy-700">
-                      {item.cost_price.toFixed(2)}
+                      {(item.cost_price ?? 0).toFixed(2)}
                     </td>
                     <td className="py-2.5 pr-4 text-right text-kantira-navy-700">
-                      {item.selling_price.toFixed(2)}
+                      {(item.selling_price ?? 0).toFixed(2)}
                     </td>
                     <td className="py-2.5 pr-4 text-right text-kantira-navy-700">
-                      {item.tax_rate_percent.toFixed(2)}
+                      {(item.tax_rate_percent ?? 0).toFixed(2)}
                     </td>
                     <td className="py-2.5 pr-4">
                       <span

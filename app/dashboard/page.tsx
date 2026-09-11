@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { LogOut, Store as StoreIcon, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { resolveIdentity } from "@/lib/auth/resolve-identity";
 import { signOut } from "./actions";
 
 export default async function DashboardPage() {
@@ -43,6 +45,17 @@ export default async function DashboardPage() {
   }
 
   if (!profile) {
+    // Not a staff account (no profiles row, and pending_org_name bootstrap
+    // above either didn't apply or didn't produce one) — check whether this
+    // is a customer identity before falling through to the staff-only
+    // "no organization found" message below. Customer identity is
+    // architecturally separate from staff profiles (0009); a customer must
+    // never be routed into the internal Business OS.
+    const identity = await resolveIdentity();
+    if (identity.kind === "customer") {
+      redirect("/account");
+    }
+
     return (
       <main className="flex min-h-screen items-center justify-center bg-brand-navy px-4">
         <div className="w-full max-w-sm rounded-card bg-white p-8 text-center shadow-xl">

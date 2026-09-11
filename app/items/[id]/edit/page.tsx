@@ -19,8 +19,12 @@ export default async function EditItemPage({
 
   const [{ data: item }, { data: categories }, { data: units }] =
     await Promise.all([
+      // items_catalog_for_staff() (not the items table directly): a
+      // SECURITY DEFINER RPC scoped to the caller's own organization,
+      // returning cost_price only to an authenticated staff member — see
+      // migration 0022.
       supabase
-        .from("items")
+        .rpc("items_catalog_for_staff")
         .select(
           "id, sku, name, category_id, uom_id, barcode, hsn_code, description, cost_price, selling_price, tax_rate_percent, reorder_level, weight_kg, track_inventory, is_active",
         )
@@ -67,7 +71,7 @@ export default async function EditItemPage({
           </h2>
         </div>
         <Link
-          href={`/items/${item.id}/media`}
+          href={`/items/${item.id ?? params.id}/media`}
           className="text-sm font-medium text-brand-royal"
         >
           Manage images →
@@ -78,24 +82,24 @@ export default async function EditItemPage({
         {canWrite ? (
           <ItemForm
             mode="edit"
-            action={updateItem.bind(null, item.id)}
+            action={updateItem.bind(null, item.id ?? params.id)}
             categories={categoryOptions}
             units={unitOptions}
             initial={{
-              sku: item.sku,
-              name: item.name,
+              sku: item.sku ?? "",
+              name: item.name ?? "",
               category_id: item.category_id ?? "",
-              uom_id: item.uom_id,
+              uom_id: item.uom_id ?? "",
               barcode: item.barcode ?? "",
               hsn_code: item.hsn_code ?? "",
               description: item.description ?? "",
-              cost_price: item.cost_price,
-              selling_price: item.selling_price,
-              tax_rate_percent: item.tax_rate_percent,
-              reorder_level: item.reorder_level,
+              cost_price: item.cost_price ?? 0,
+              selling_price: item.selling_price ?? 0,
+              tax_rate_percent: item.tax_rate_percent ?? 0,
+              reorder_level: item.reorder_level ?? 0,
               weight_kg: item.weight_kg,
-              track_inventory: item.track_inventory,
-              is_active: item.is_active,
+              track_inventory: item.track_inventory ?? true,
+              is_active: item.is_active ?? true,
             }}
           />
         ) : (

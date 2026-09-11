@@ -3374,6 +3374,29 @@ export type Database = {
       }
       has_store_access: { Args: { target_store_id: string }; Returns: boolean }
       is_org_public_storefront: { Args: { p_org_id: string }; Returns: boolean }
+      items_catalog_for_staff: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          organization_id: string
+          category_id: string | null
+          uom_id: string
+          sku: string
+          barcode: string | null
+          name: string
+          description: string | null
+          hsn_code: string | null
+          cost_price: number
+          selling_price: number
+          tax_rate_percent: number
+          reorder_level: number
+          weight_kg: number | null
+          track_inventory: boolean
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }[]
+      }
       next_document_number: {
         Args: {
           p_sequence_type: Database["public"]["Enums"]["document_sequence_type"]
