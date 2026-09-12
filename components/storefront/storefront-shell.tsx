@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { LogOut, Search, ShoppingBag, User } from "lucide-react";
+import { LogOut, Search, ShoppingBag, ShoppingCart, User } from "lucide-react";
 import { resolveIdentity } from "@/lib/auth/resolve-identity";
 import { signOut } from "@/app/dashboard/actions";
+import { createClient } from "@/lib/supabase/server";
+import { getCartItemCount } from "@/lib/data/cart-queries";
 
 // Shared chrome for every public storefront page (/, /shop, /categories,
 // /search, /products/[id]). Deliberately NOT KantiraShell — that shell's
@@ -14,6 +16,15 @@ import { signOut } from "@/app/dashboard/actions";
 export async function StorefrontShell({ children }: { children: React.ReactNode }) {
   const identity = await resolveIdentity();
   const isCustomer = identity.kind === "customer";
+
+  // Cart count is a UX convenience only — never a security boundary. The
+  // query itself is RLS-scoped to the caller's own cart_items regardless
+  // of what this shell requests, so this is safe even if isCustomer were
+  // ever wrong; it's skipped for non-customers purely to avoid a wasted
+  // query on every storefront page view.
+  const cartItemCount = isCustomer
+    ? await getCartItemCount(createClient())
+    : 0;
 
   return (
     <div className="flex min-h-screen flex-col bg-brand-gray">
@@ -65,6 +76,18 @@ export async function StorefrontShell({ children }: { children: React.ReactNode 
           <div className="flex items-center gap-2">
             {isCustomer ? (
               <>
+                <Link
+                  href="/cart"
+                  aria-label={`Cart, ${cartItemCount} item${cartItemCount === 1 ? "" : "s"}`}
+                  className="relative inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-kantira-navy-700 hover:bg-kantira-navy-50"
+                >
+                  <ShoppingCart size={18} />
+                  {cartItemCount > 0 ? (
+                    <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-royal px-1 text-[11px] font-bold text-white">
+                      {cartItemCount > 99 ? "99+" : cartItemCount}
+                    </span>
+                  ) : null}
+                </Link>
                 <Link
                   href="/account"
                   className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-kantira-navy-700 hover:bg-kantira-navy-50"

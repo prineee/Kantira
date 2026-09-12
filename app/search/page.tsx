@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { cartAffordanceForIdentity, resolveIdentity } from "@/lib/auth/resolve-identity";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { PaginationNav } from "@/components/storefront/pagination-nav";
@@ -17,6 +18,7 @@ export default async function SearchPage({
   const page = parsePageParam(searchParams.page);
 
   const supabase = createClient();
+  const identity = await resolveIdentity();
   const organizationId = await getStorefrontOrgId(supabase);
 
   const itemsPage = query
@@ -61,6 +63,7 @@ export default async function SearchPage({
               products={products}
               emptyTitle="No results found"
               emptyDescription={`We couldn't find any products matching "${query}". Try a different search term.`}
+              cartAffordance={cartAffordanceForIdentity(identity)}
             />
             <PaginationNav
               basePath="/search"

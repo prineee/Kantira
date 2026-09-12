@@ -1,14 +1,16 @@
 import { PackageSearch } from "lucide-react";
-import { ProductCard, type StorefrontProductCardData } from "./product-card";
+import { ProductCard, type CartAffordance, type StorefrontProductCardData } from "./product-card";
 
 export function ProductGrid({
   products,
   emptyTitle,
   emptyDescription,
+  cartAffordance = "none",
 }: {
   products: StorefrontProductCardData[];
   emptyTitle: string;
   emptyDescription: string;
+  cartAffordance?: CartAffordance;
 }) {
   if (products.length === 0) {
     return (
@@ -25,7 +27,7 @@ export function ProductGrid({
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
       {products.map((product) => (
-        <ProductCard key={product.id} product={product} />
+        <ProductCard key={product.id} product={product} cartAffordance={cartAffordance} />
       ))}
     </div>
   );

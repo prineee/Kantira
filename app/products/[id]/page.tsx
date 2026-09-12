@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { cartAffordanceForIdentity, resolveIdentity } from "@/lib/auth/resolve-identity";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { ProductImage } from "@/components/storefront/product-image";
+import { AddToCartForm, LoginToAddToCart } from "@/components/storefront/add-to-cart-form";
 import { getStorefrontItem, getStorefrontOrgId } from "@/lib/data/storefront-items";
 import { getItemGalleryUrls } from "@/lib/data/storefront-images";
 import { isValidUuid } from "@/lib/data/storefront-catalog";
@@ -43,6 +45,8 @@ export default async function ProductDetailPage({
 
   const gallery = await getItemGalleryUrls(supabase, item.id);
   const primaryImage = gallery[0] ?? null;
+  const identity = await resolveIdentity();
+  const cartAffordance = cartAffordanceForIdentity(identity);
 
   return (
     <StorefrontShell>
@@ -95,6 +99,14 @@ export default async function ProductDetailPage({
                 </span>
               ) : null}
             </p>
+
+            <div className="mt-6">
+              {cartAffordance === "add" ? (
+                <AddToCartForm itemId={item.id} showQuantityInput />
+              ) : cartAffordance === "login" ? (
+                <LoginToAddToCart />
+              ) : null}
+            </div>
 
             {item.description ? (
               <div className="mt-6">

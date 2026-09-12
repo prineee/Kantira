@@ -106,3 +106,23 @@ export function experienceHomeRoute(identity: ResolvedIdentity): string {
       return "/dashboard";
   }
 }
+
+// What cart-related affordance a storefront catalog surface (product card,
+// product detail) should show for a given identity — Phase 4B section 13:
+// a customer gets the real add-to-cart control, an anonymous visitor gets
+// routed to the existing login boundary instead of a server cart, and
+// staff/unresolved identities get neither (an internal employee must never
+// be handed a customer cart merely for being authenticated).
+export type CartAffordance = "add" | "login" | "none";
+
+export function cartAffordanceForIdentity(identity: ResolvedIdentity): CartAffordance {
+  switch (identity.kind) {
+    case "customer":
+      return "add";
+    case "unauthenticated":
+      return "login";
+    case "staff":
+    case "unresolved":
+      return "none";
+  }
+}

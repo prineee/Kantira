@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   resolveIdentityFrom,
   experienceHomeRoute,
+  cartAffordanceForIdentity,
   type IdentitySupabaseClient,
 } from "./resolve-identity";
 
@@ -107,4 +108,30 @@ test("unauthorized role access: an unauthenticated caller never resolves to staf
   const identity = await resolveIdentityFrom(supabase);
   assert.notEqual(identity.kind, "staff");
   assert.notEqual(identity.kind, "customer");
+});
+
+test("cartAffordanceForIdentity: only a customer gets 'add', staff/unresolved get 'none', anon gets 'login'", () => {
+  assert.equal(
+    cartAffordanceForIdentity({
+      kind: "customer",
+      userId: USER_ID,
+      organizationId: ORG_ID,
+      customerId: CUSTOMER_ID,
+    }),
+    "add",
+  );
+  assert.equal(cartAffordanceForIdentity({ kind: "unauthenticated" }), "login");
+  assert.equal(
+    cartAffordanceForIdentity({
+      kind: "staff",
+      userId: USER_ID,
+      organizationId: ORG_ID,
+      role: "OWNER",
+    }),
+    "none",
+  );
+  assert.equal(
+    cartAffordanceForIdentity({ kind: "unresolved", userId: USER_ID }),
+    "none",
+  );
 });

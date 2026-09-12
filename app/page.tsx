@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRight, LayoutGrid, ShoppingBag } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { resolveIdentity } from "@/lib/auth/resolve-identity";
+import { cartAffordanceForIdentity, resolveIdentity } from "@/lib/auth/resolve-identity";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import {
@@ -115,6 +115,7 @@ export default async function RootPage() {
           products={products}
           emptyTitle="Catalog coming soon"
           emptyDescription="We're setting up our storefront. Please check back shortly."
+          cartAffordance={cartAffordanceForIdentity(identity)}
         />
       </section>
     </StorefrontShell>

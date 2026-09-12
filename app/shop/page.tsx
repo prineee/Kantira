@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { cartAffordanceForIdentity, resolveIdentity } from "@/lib/auth/resolve-identity";
 import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { ProductGrid } from "@/components/storefront/product-grid";
 import { PaginationNav } from "@/components/storefront/pagination-nav";
@@ -18,6 +19,7 @@ export default async function ShopPage({
   searchParams: { category?: string; page?: string };
 }) {
   const supabase = createClient();
+  const identity = await resolveIdentity();
   const organizationId = await getStorefrontOrgId(supabase);
   const page = parsePageParam(searchParams.page);
   const categoryId =
@@ -96,6 +98,7 @@ export default async function ShopPage({
               ? "We're setting up our storefront. Please check back shortly."
               : "There are no products in this category yet."
           }
+          cartAffordance={cartAffordanceForIdentity(identity)}
         />
 
         <PaginationNav
