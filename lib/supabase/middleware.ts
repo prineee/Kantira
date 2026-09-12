@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
+import { isPublicStorefrontPath } from "@/lib/auth/public-routes";
 
 /**
  * Refreshes the Supabase auth session on every request and redirects
@@ -41,7 +42,17 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/signup") ||
     request.nextUrl.pathname.startsWith("/auth");
 
-  if (!user && !isAuthRoute) {
+  // Public storefront routes (Phase 4A): logged-out shoppers must be able
+  // to browse the catalog. This never relaxes data access on its own — the
+  // pages behind these routes read through the same anon/authenticated RLS
+  // policies (items_select_public, product_categories_select_public, etc.)
+  // either way; this only stops middleware from bouncing an anonymous
+  // visitor to /login before the page ever renders.
+  const isPublicStorefrontRoute = isPublicStorefrontPath(
+    request.nextUrl.pathname,
+  );
+
+  if (!user && !isAuthRoute && !isPublicStorefrontRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
