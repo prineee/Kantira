@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, MapPin, ShoppingCart } from "lucide-react";
 import { requireCustomerContext } from "@/lib/actions/customer-auth";
 import { signOut } from "@/app/dashboard/actions";
 
@@ -52,9 +53,29 @@ export default async function AccountPage() {
           Welcome, {customer.name}
         </h1>
         <p className="mt-2 text-sm text-brand-slate">
-          Your KANTIRA account. Browsing, cart, and order history are coming
-          soon.
+          Your KANTIRA account. Order history is coming soon.
         </p>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <Link
+            href="/account/addresses"
+            className="flex items-center gap-3 rounded-card border border-kantira-navy-100 bg-white p-4 shadow-sm transition hover:border-brand-royal"
+          >
+            <MapPin size={20} className="text-brand-royal" />
+            <span className="text-sm font-semibold text-kantira-navy-900">
+              Delivery addresses
+            </span>
+          </Link>
+          <Link
+            href="/cart"
+            className="flex items-center gap-3 rounded-card border border-kantira-navy-100 bg-white p-4 shadow-sm transition hover:border-brand-royal"
+          >
+            <ShoppingCart size={20} className="text-brand-royal" />
+            <span className="text-sm font-semibold text-kantira-navy-900">
+              Your cart
+            </span>
+          </Link>
+        </div>
       </div>
     </main>
   );

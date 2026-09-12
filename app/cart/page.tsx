@@ -77,14 +77,24 @@ export default async function CartPage() {
             </div>
 
             <div className="mt-6 border-t border-kantira-navy-100 pt-6">
-              <button
-                type="button"
-                disabled
-                title="Checkout is coming soon"
-                className="w-full rounded-card bg-kantira-navy-100 px-5 py-3 text-sm font-semibold text-kantira-navy-400 cursor-not-allowed"
-              >
-                Checkout — coming soon
-              </button>
+              {summary.hasUnavailableItems ? (
+                <button
+                  type="button"
+                  disabled
+                  title="Remove unavailable items to continue"
+                  className="w-full rounded-card bg-kantira-navy-100 px-5 py-3 text-sm font-semibold text-kantira-navy-400 cursor-not-allowed"
+                >
+                  Resolve cart issues to continue
+                </button>
+              ) : (
+                <Link
+                  href="/checkout"
+                  className="flex w-full items-center justify-center gap-2 rounded-card bg-brand-royal px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#0f4fd6]"
+                >
+                  Proceed to checkout
+                  <ArrowRight size={16} />
+                </Link>
+              )}
             </div>
           </div>
         )}
