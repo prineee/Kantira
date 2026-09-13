@@ -388,6 +388,175 @@ export type Database = {
           },
         ]
       }
+      checkout_session_lines: {
+        Row: {
+          checkout_session_id: string
+          created_at: string
+          id: string
+          item_id: string
+          line_total: number
+          name_snapshot: string
+          organization_id: string
+          quantity: number
+          sku_snapshot: string
+          tax_amount: number
+          unit_price: number
+        }
+        Insert: {
+          checkout_session_id: string
+          created_at?: string
+          id?: string
+          item_id: string
+          line_total: number
+          name_snapshot: string
+          organization_id: string
+          quantity: number
+          sku_snapshot: string
+          tax_amount?: number
+          unit_price: number
+        }
+        Update: {
+          checkout_session_id?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          line_total?: number
+          name_snapshot?: string
+          organization_id?: string
+          quantity?: number
+          sku_snapshot?: string
+          tax_amount?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checkout_session_lines_checkout_session_id_fkey"
+            columns: ["checkout_session_id"]
+            isOneToOne: false
+            referencedRelation: "checkout_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkout_session_lines_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkout_session_lines_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checkout_sessions: {
+        Row: {
+          courier_id: string | null
+          created_at: string
+          created_by: string
+          currency: string
+          customer_id: string
+          discount_total: number
+          expires_at: string
+          fulfillment_store_id: string | null
+          grand_total: number
+          id: string
+          idempotency_key: string
+          order_id: string | null
+          organization_id: string
+          payment_method: string
+          shipping_address_id: string
+          shipping_total: number
+          status: string
+          subtotal: number
+          tax_total: number
+          updated_at: string
+        }
+        Insert: {
+          courier_id?: string | null
+          created_at?: string
+          created_by: string
+          currency?: string
+          customer_id: string
+          discount_total?: number
+          expires_at?: string
+          fulfillment_store_id?: string | null
+          grand_total: number
+          id?: string
+          idempotency_key: string
+          order_id?: string | null
+          organization_id: string
+          payment_method: string
+          shipping_address_id: string
+          shipping_total: number
+          status?: string
+          subtotal: number
+          tax_total?: number
+          updated_at?: string
+        }
+        Update: {
+          courier_id?: string | null
+          created_at?: string
+          created_by?: string
+          currency?: string
+          customer_id?: string
+          discount_total?: number
+          expires_at?: string
+          fulfillment_store_id?: string | null
+          grand_total?: number
+          id?: string
+          idempotency_key?: string
+          order_id?: string | null
+          organization_id?: string
+          payment_method?: string
+          shipping_address_id?: string
+          shipping_total?: number
+          status?: string
+          subtotal?: number
+          tax_total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checkout_sessions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkout_sessions_fulfillment_store_id_fkey"
+            columns: ["fulfillment_store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkout_sessions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "online_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkout_sessions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkout_sessions_shipping_address_id_fkey"
+            columns: ["shipping_address_id"]
+            isOneToOne: false
+            referencedRelation: "customer_addresses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_addresses: {
         Row: {
           city: string
@@ -1460,10 +1629,11 @@ export type Database = {
       payment_intents: {
         Row: {
           amount: number
+          checkout_session_id: string | null
           created_at: string
           currency: string
           id: string
-          order_id: string
+          order_id: string | null
           organization_id: string
           provider: string
           provider_intent_id: string | null
@@ -1473,10 +1643,11 @@ export type Database = {
         }
         Insert: {
           amount: number
+          checkout_session_id?: string | null
           created_at?: string
           currency?: string
           id?: string
-          order_id: string
+          order_id?: string | null
           organization_id: string
           provider: string
           provider_intent_id?: string | null
@@ -1486,10 +1657,11 @@ export type Database = {
         }
         Update: {
           amount?: number
+          checkout_session_id?: string | null
           created_at?: string
           currency?: string
           id?: string
-          order_id?: string
+          order_id?: string | null
           organization_id?: string
           provider?: string
           provider_intent_id?: string | null
@@ -1498,6 +1670,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payment_intents_checkout_session_id_fkey"
+            columns: ["checkout_session_id"]
+            isOneToOne: false
+            referencedRelation: "checkout_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payment_intents_order_id_fkey"
             columns: ["order_id"]
@@ -3364,9 +3543,38 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      confirm_razorpay_payment_and_finalize: {
+        Args: {
+          p_amount: number
+          p_currency: string
+          p_provider_order_id: string
+          p_provider_payment_id: string
+        }
+        Returns: {
+          out_order_id: string
+          out_order_number: string
+          out_status: string
+        }[]
+      }
       control_type_for_payment_method: {
         Args: { p_method: Database["public"]["Enums"]["payment_method"] }
         Returns: Database["public"]["Enums"]["control_account_type"]
+      }
+      create_checkout_session: {
+        Args: {
+          p_courier_id: string
+          p_fulfillment_store_id: string
+          p_idempotency_key: string
+          p_payment_method: string
+          p_shipping_address_id: string
+          p_shipping_total: number
+        }
+        Returns: {
+          out_checkout_session_id: string
+          out_currency: string
+          out_grand_total: number
+          out_status: string
+        }[]
       }
       create_customer_receipt: {
         Args: {
@@ -3406,6 +3614,20 @@ export type Database = {
         Args: { org_name: string }
         Returns: string
       }
+      create_razorpay_payment_intent: {
+        Args: {
+          p_amount: number
+          p_checkout_session_id: string
+          p_currency: string
+          p_provider_order_id: string
+        }
+        Returns: {
+          out_amount: number
+          out_currency: string
+          out_payment_intent_id: string
+          out_provider_order_id: string
+        }[]
+      }
       create_stock_transfer: {
         Args: {
           p_from_store_id: string
@@ -3443,6 +3665,14 @@ export type Database = {
       ensure_loyalty_account: {
         Args: { p_customer_id: string }
         Returns: string
+      }
+      finalize_checkout_session_internal: {
+        Args: { p_session_id: string }
+        Returns: {
+          out_order_id: string
+          out_order_number: string
+          out_status: string
+        }[]
       }
       get_checkout_fulfillment_candidates: {
         Args: Record<PropertyKey, never>
@@ -3497,12 +3727,24 @@ export type Database = {
           updated_at: string
         }[]
       }
+      mark_razorpay_payment_failed: {
+        Args: { p_provider_order_id: string }
+        Returns: undefined
+      }
       next_document_number: {
         Args: {
           p_sequence_type: Database["public"]["Enums"]["document_sequence_type"]
           p_store_id: string
         }
         Returns: string
+      }
+      place_cod_order: {
+        Args: { p_checkout_session_id: string }
+        Returns: {
+          out_order_id: string
+          out_order_number: string
+          out_status: string
+        }[]
       }
       post_purchase: { Args: { p_purchase_id: string }; Returns: string }
       post_purchase_return: {

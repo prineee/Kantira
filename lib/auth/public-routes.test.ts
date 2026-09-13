@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isPublicStorefrontPath } from "./public-routes";
+import { isApiRoute, isPublicStorefrontPath } from "./public-routes";
 
 test("storefront root and section routes are public", () => {
   for (const path of [
@@ -36,4 +36,16 @@ test("internal and customer-account routes stay gated", () => {
 test("does not match unrelated paths with a shared prefix", () => {
   assert.equal(isPublicStorefrontPath("/shopping-list"), false);
   assert.equal(isPublicStorefrontPath("/searchindex"), false);
+});
+
+test("isApiRoute matches every app/api path, including the Razorpay webhook", () => {
+  for (const path of ["/api", "/api/webhooks/razorpay", "/api/anything/nested"]) {
+    assert.equal(isApiRoute(path), true, path);
+  }
+});
+
+test("isApiRoute does not match non-API paths, including one with 'api' in its name", () => {
+  for (const path of ["/", "/shop", "/dashboard", "/apiary"]) {
+    assert.equal(isApiRoute(path), false, path);
+  }
 });

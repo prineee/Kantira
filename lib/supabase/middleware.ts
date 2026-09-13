@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
-import { isPublicStorefrontPath } from "@/lib/auth/public-routes";
+import { isApiRoute, isPublicStorefrontPath } from "@/lib/auth/public-routes";
 
 /**
  * Refreshes the Supabase auth session on every request and redirects
@@ -51,6 +51,16 @@ export async function updateSession(request: NextRequest) {
   const isPublicStorefrontRoute = isPublicStorefrontPath(
     request.nextUrl.pathname,
   );
+
+  // API Route Handlers (app/api/**) own their own authorization (a
+  // signature check for a webhook, requireCustomerContext() equivalent for
+  // anything session-based) — never gated by this page-navigation redirect.
+  // Phase 4D added the first one: app/api/webhooks/razorpay/route.ts,
+  // which has no Supabase session at all and would otherwise be redirected
+  // to /login on every request, breaking the webhook entirely.
+  if (isApiRoute(request.nextUrl.pathname)) {
+    return supabaseResponse;
+  }
 
   if (!user && !isAuthRoute && !isPublicStorefrontRoute) {
     const url = request.nextUrl.clone();

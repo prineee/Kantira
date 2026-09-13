@@ -39,18 +39,49 @@ function listSourceFiles(dir: string, out: string[] = []): string[] {
 // exactly the "claiming a security test passed because a mock returned the
 // expected result" this correction was asked not to do).
 
-test("no service-role env var is ever read in app/ or lib/ source (no service-role bypass introduced)", () => {
+// Phase 4D adds exactly one narrow, justified exception:
+// lib/supabase/service-role.ts, used ONLY by the Razorpay webhook route
+// (app/api/webhooks/razorpay/route.ts) — a signature-verified,
+// server-to-server call with no Supabase session/auth.uid() to authorize
+// against at all, the same class of "trusted non-user caller" problem
+// auto_allocate_online_order_store() (migration 0015) already solves with
+// a service_role branch. See that file's own comment for the full
+// rationale and the rules constraining its use. This test still fails on
+// ANY other file reading the service-role key — the exception is this one
+// file, not a general relaxation.
+const ALLOWED_SERVICE_ROLE_FILES = new Set([
+  path.join(PROJECT_ROOT, "lib", "supabase", "service-role.ts"),
+]);
+
+test("no service-role env var is ever read in app/ or lib/ source outside the one justified exception", () => {
   const files = listSourceFiles(PROJECT_ROOT).filter(
     (f) => f.startsWith(path.join(PROJECT_ROOT, "app")) || f.startsWith(path.join(PROJECT_ROOT, "lib")),
   );
   const offenders: string[] = [];
   for (const file of files) {
+    if (ALLOWED_SERVICE_ROLE_FILES.has(file)) continue;
     const content = fs.readFileSync(file, "utf8");
     if (/process\.env(\.SUPABASE_SERVICE_ROLE_KEY|\[["']SUPABASE_SERVICE_ROLE_KEY["']\])/.test(content)) {
       offenders.push(file);
     }
   }
   assert.deepEqual(offenders, []);
+});
+
+test("the one allowed service-role file is never imported from customer-facing app code", () => {
+  // Defense in depth beyond the exception itself: even though
+  // service-role.ts is permitted to exist, nothing under app/ may import
+  // it except the webhook route it exists for.
+  const files = listSourceFiles(path.join(PROJECT_ROOT, "app"));
+  const importers: string[] = [];
+  for (const file of files) {
+    if (file === path.join(PROJECT_ROOT, "app", "api", "webhooks", "razorpay", "route.ts")) continue;
+    const content = fs.readFileSync(file, "utf8");
+    if (content.includes("supabase/service-role")) {
+      importers.push(file);
+    }
+  }
+  assert.deepEqual(importers, []);
 });
 
 test("no app code reads items.cost_price or product_media.created_by directly from the base table", () => {

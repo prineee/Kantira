@@ -22,3 +22,19 @@ export function isPublicStorefrontPath(pathname: string): boolean {
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }
+
+// API Route Handlers (app/api/**) are a different kind of route entirely —
+// they serve JSON/HTTP responses, never HTML pages, and this codebase's
+// page-navigation-style "no session -> redirect to /login" behavior makes
+// no sense for them (Phase 4D added the first one: the Razorpay webhook,
+// app/api/webhooks/razorpay/route.ts, a server-to-server call with no
+// Supabase session at all — authenticated instead by an HMAC signature
+// checked inside the handler itself). Every route under app/api/ owns its
+// own authorization (a Server Action's requireOrgContext()/
+// requireCustomerContext() equivalent, or a signature check for a
+// webhook) rather than relying on middleware to gate it — so all of
+// app/api/ is excluded from the redirect-to-login check, not just this
+// one webhook path.
+export function isApiRoute(pathname: string): boolean {
+  return pathname === "/api" || pathname.startsWith("/api/");
+}
