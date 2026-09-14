@@ -50,5 +50,9 @@ test("getShiprocketConfig's return value never got logged by this test file (san
   // env.test.ts. Here we only assert the module's public export list is the
   // expected, minimal set.
   const exportedNames = Object.keys(envModule).sort();
-  assert.deepEqual(exportedNames, ["_resetShiprocketConfigForTests", "getShiprocketConfig"]);
+  assert.deepEqual(exportedNames, [
+    "_resetShiprocketConfigForTests",
+    "getShiprocketConfig",
+    "getShiprocketWebhookSecret",
+  ]);
 });

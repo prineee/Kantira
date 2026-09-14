@@ -40,6 +40,14 @@ export function getShiprocketConfig(): ShiprocketConfig {
   return cachedConfig;
 }
 
+// Read separately from getShiprocketConfig(): the webhook route must fail
+// closed (reject, never process as trusted) when this is absent — a
+// distinct failure path from "can't call the Shiprocket API." Mirrors
+// lib/razorpay/env.ts's getRazorpayWebhookSecret() exactly.
+export function getShiprocketWebhookSecret(): string | null {
+  return process.env.SHIPROCKET_WEBHOOK_SECRET || null;
+}
+
 /** Test-only: clears the cached config so a test can exercise a different
  * env-var scenario within the same process. Not used by any production
  * code path. */

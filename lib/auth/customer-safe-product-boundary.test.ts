@@ -40,17 +40,18 @@ function listSourceFiles(dir: string, out: string[] = []): string[] {
 // expected result" this correction was asked not to do).
 
 // Phase 4D adds exactly one narrow, justified exception:
-// lib/supabase/service-role.ts, used ONLY by the Razorpay webhook route
-// (app/api/webhooks/razorpay/route.ts) — a signature-verified,
-// server-to-server call with no Supabase session/auth.uid() to authorize
-// against at all, the same class of "trusted non-user caller" problem
-// auto_allocate_online_order_store() (migration 0015) already solves with
-// a service_role branch. See that file's own comment for the full
-// rationale and the rules constraining its use. This test still fails on
-// ANY other file reading the service-role key — the exception is this one
-// file, not a general relaxation.
+// lib/supabase/service-role.ts. Phase 5A-2 adds a second webhook route
+// using it, same class of problem — see that file's own comment for the
+// full rationale. This test still fails on ANY other file reading the
+// service-role key — the exception is these specific files, not a general
+// relaxation.
 const ALLOWED_SERVICE_ROLE_FILES = new Set([
   path.join(PROJECT_ROOT, "lib", "supabase", "service-role.ts"),
+]);
+
+const ALLOWED_SERVICE_ROLE_IMPORTERS = new Set([
+  path.join(PROJECT_ROOT, "app", "api", "webhooks", "razorpay", "route.ts"),
+  path.join(PROJECT_ROOT, "app", "api", "webhooks", "shiprocket", "route.ts"),
 ]);
 
 test("no service-role env var is ever read in app/ or lib/ source outside the one justified exception", () => {
@@ -71,11 +72,11 @@ test("no service-role env var is ever read in app/ or lib/ source outside the on
 test("the one allowed service-role file is never imported from customer-facing app code", () => {
   // Defense in depth beyond the exception itself: even though
   // service-role.ts is permitted to exist, nothing under app/ may import
-  // it except the webhook route it exists for.
+  // it except the webhook routes it exists for.
   const files = listSourceFiles(path.join(PROJECT_ROOT, "app"));
   const importers: string[] = [];
   for (const file of files) {
-    if (file === path.join(PROJECT_ROOT, "app", "api", "webhooks", "razorpay", "route.ts")) continue;
+    if (ALLOWED_SERVICE_ROLE_IMPORTERS.has(file)) continue;
     const content = fs.readFileSync(file, "utf8");
     if (content.includes("supabase/service-role")) {
       importers.push(file);

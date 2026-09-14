@@ -154,7 +154,12 @@ export async function getCheckoutShippingQuoteCore(
     return { ok: false, error: weightResult.reason };
   }
 
-  const storeResult = await deps.resolveFulfillmentStore(supabase, customer.organization_id);
+  const storeResult = await deps.resolveFulfillmentStore(supabase, customer.organization_id, {
+    deliveryPostcode: address.postal_code,
+    weightKg: weightResult.totalWeightKg,
+    cod: input.paymentMethod === "COD",
+    itemLines: input.itemLines,
+  });
   if (!storeResult.ok) {
     return { ok: false, error: "FULFILLMENT CONFIGURATION REQUIRED: " + storeResult.reason };
   }

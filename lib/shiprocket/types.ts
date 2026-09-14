@@ -62,3 +62,115 @@ export type ShiprocketAuthProfile = {
   lastName: string;
   createdAt: string;
 };
+
+// ============================================================
+// Order/shipment creation (Phase 5A-2) — UNVERIFIED CONTRACT.
+//
+// Unlike everything above (auth, pickup, serviceability — each verified
+// live against a real account per this file's header), NOTHING below this
+// line has been exercised against a live Shiprocket account from this
+// repository. It is built from Shiprocket's published external API v1
+// documentation (POST /orders/create/adhoc, POST /courier/assign/awb) as
+// of implementation time, following the exact same field-naming
+// conventions already confirmed live for serviceability/pickup (snake_case
+// wire format, mapped to camelCase KANTIRA types). Field names, required-
+// ness, and response shape MUST be re-confirmed against a real sandbox
+// call (Phase 5A-2 Step 10, CTO-authorized only) before this is trusted —
+// do not treat any type below as verified. Where the public docs are
+// themselves ambiguous, the more conservative/defensive reading is used
+// and called out below.
+// ============================================================
+
+export type CreateOrderLineInput = {
+  name: string;
+  sku: string;
+  units: number;
+  sellingPrice: number;
+  /** Per Shiprocket's docs this is a per-unit discount amount, not a
+   * percentage — unverified live. */
+  discount: number;
+  /** Per Shiprocket's docs this is the line's tax amount — unverified
+   * whether per-unit or per-line total; KANTIRA passes online_order_lines'
+   * own line-level tax_amount as-is. */
+  tax: number;
+  hsn: string | null;
+};
+
+export type CreateOrderInput = {
+  /** KANTIRA's own online_orders.order_number — sent as Shiprocket's
+   * `order_id` (their "channel order id"). This is the deterministic
+   * reference reconciliation (getOrderByChannelId below) is keyed on —
+   * never a freshly-generated value per attempt, so a retry after an
+   * uncertain result can look up the SAME reference rather than risk a
+   * second provider-side order. */
+  channelOrderId: string;
+  orderDate: string; // "YYYY-MM-DD HH:mm"
+  pickupLocationNickname: string;
+  paymentMethod: "Prepaid" | "COD";
+  subTotal: number;
+  billing: {
+    customerName: string;
+    lastName: string;
+    address: string;
+    address2: string | null;
+    city: string;
+    state: string;
+    pincode: string;
+    country: string;
+    email: string;
+    phone: string;
+  };
+  lines: CreateOrderLineInput[];
+  /** Package dimensions/weight. KANTIRA does not model per-item physical
+   * dimensions today (only weight_kg) — length/breadth/height below are a
+   * placeholder default, not derived from real product data. Flagged as a
+   * known gap, not silently invented as if accurate. */
+  weightKg: number;
+  lengthCm: number;
+  breadthCm: number;
+  heightCm: number;
+};
+
+export type CreateOrderResult =
+  | {
+      ok: true;
+      providerOrderId: string;
+      providerShipmentId: string;
+      /** Shiprocket's own inner status string for the created order
+       * (observed field name from docs: `status`), e.g. "NEW". Persisted
+       * as-is, not mapped to a KANTIRA shipment status here — order.ts's
+       * caller decides that. */
+      providerStatus: string | null;
+      /** Present only when Shiprocket auto-assigns a courier at order-
+       * creation time (not guaranteed) — otherwise assignAwb() is a
+       * separate follow-up call. */
+      awbCode: string | null;
+      courierCompanyId: number | null;
+    }
+  | { ok: false; reason: string };
+
+export type AssignAwbResult =
+  | {
+      ok: true;
+      awbCode: string;
+      courierCompanyId: number;
+      courierName: string | null;
+    }
+  | { ok: false; reason: string };
+
+/** Reconciliation lookup — "did a create request KANTIRA already sent
+ * actually take effect on Shiprocket's side?", keyed by the same
+ * channelOrderId used in CreateOrderInput. Endpoint/shape per Shiprocket's
+ * published "Get order details" filtered-by-channel-order-id contract —
+ * unverified live, same caveat as above. */
+export type OrderLookupResult =
+  | {
+      found: true;
+      providerOrderId: string;
+      providerShipmentId: string | null;
+      providerStatus: string | null;
+      awbCode: string | null;
+      courierCompanyId: number | null;
+      courierName: string | null;
+    }
+  | { found: false };

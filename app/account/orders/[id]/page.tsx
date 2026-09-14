@@ -8,6 +8,7 @@ import { cardClass } from "@/lib/ui/form-classes";
 
 const SHIPMENT_LABEL: Record<string, string> = {
   PENDING: "Preparing shipment",
+  ATTEMPTED: "Preparing shipment",
   CREATED: "Shipped",
   FAILED: "Preparing shipment",
   DELIVERED: "Delivered",
@@ -33,7 +34,9 @@ export default async function AccountOrderDetailPage({ params }: { params: { id:
 
   const { data: order } = await supabase
     .from("online_orders")
-    .select("id, order_number, status, payment_status, subtotal, tax_total, shipping_total, grand_total, placed_at")
+    .select(
+      "id, order_number, status, payment_status, subtotal, tax_total, shipping_total, grand_total, placed_at, shipping_address_id",
+    )
     .eq("id", params.id)
     .maybeSingle();
 
@@ -48,8 +51,14 @@ export default async function AccountOrderDetailPage({ params }: { params: { id:
 
   const { data: shipment } = await supabase
     .from("shipments")
-    .select("status, courier_name, provider_awb, shipped_at, delivered_at")
+    .select("status, courier_name, provider_awb, shipped_at, delivered_at, last_tracking_status")
     .eq("online_order_id", order.id)
+    .maybeSingle();
+
+  const { data: address } = await supabase
+    .from("customer_addresses")
+    .select("city, state")
+    .eq("id", order.shipping_address_id)
     .maybeSingle();
 
   return (
@@ -68,6 +77,11 @@ export default async function AccountOrderDetailPage({ params }: { params: { id:
           Placed {new Date(order.placed_at).toLocaleDateString()} &middot; {order.status} &middot;{" "}
           {order.payment_status === "PAID" ? "Payment received" : order.payment_status === "PENDING" ? "Pay on delivery" : order.payment_status}
         </p>
+        {address ? (
+          <p className="text-sm text-brand-slate">
+            Shipping to {address.city}, {address.state}
+          </p>
+        ) : null}
 
         <section className={`${cardClass} mt-6`}>
           <h2 className="mb-2 text-sm font-semibold text-kantira-navy-900">Shipment</h2>
@@ -75,7 +89,23 @@ export default async function AccountOrderDetailPage({ params }: { params: { id:
             <div className="text-sm text-brand-slate">
               <p>{SHIPMENT_LABEL[shipment.status] ?? shipment.status}</p>
               {shipment.courier_name ? <p>Courier: {shipment.courier_name}</p> : null}
-              {shipment.provider_awb ? <p>Tracking number: {shipment.provider_awb}</p> : null}
+              {shipment.provider_awb ? (
+                <p>
+                  Tracking number: {shipment.provider_awb}
+                  {/* Shiprocket's public tracking page convention — best-effort
+                      external link, not a KANTIRA-verified tracking API. */}
+                  {" "}
+                  <a
+                    href={`https://shiprocket.co/tracking/${encodeURIComponent(shipment.provider_awb)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-brand-royal underline"
+                  >
+                    Track package
+                  </a>
+                </p>
+              ) : null}
+              {shipment.last_tracking_status ? <p>Latest update: {shipment.last_tracking_status}</p> : null}
               {shipment.delivered_at ? (
                 <p>Delivered {new Date(shipment.delivered_at).toLocaleDateString()}</p>
               ) : shipment.shipped_at ? (

@@ -2801,13 +2801,16 @@ export type Database = {
       }
       shipments: {
         Row: {
+          attempt_count: number
           courier_id: string | null
           courier_name: string | null
           created_at: string
           delivered_at: string | null
           fulfillment_store_id: string
           id: string
+          last_attempted_at: string | null
           last_error: string | null
+          last_tracking_status: string | null
           online_order_id: string
           organization_id: string
           provider: string
@@ -2819,13 +2822,16 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attempt_count?: number
           courier_id?: string | null
           courier_name?: string | null
           created_at?: string
           delivered_at?: string | null
           fulfillment_store_id: string
           id?: string
+          last_attempted_at?: string | null
           last_error?: string | null
+          last_tracking_status?: string | null
           online_order_id: string
           organization_id: string
           provider?: string
@@ -2837,13 +2843,16 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attempt_count?: number
           courier_id?: string | null
           courier_name?: string | null
           created_at?: string
           delivered_at?: string | null
           fulfillment_store_id?: string
           id?: string
+          last_attempted_at?: string | null
           last_error?: string | null
+          last_tracking_status?: string | null
           online_order_id?: string
           organization_id?: string
           provider?: string
@@ -3838,7 +3847,7 @@ export type Database = {
         }[]
       }
       get_checkout_fulfillment_candidates: {
-        Args: Record<PropertyKey, never>
+        Args: { p_items?: Json }
         Returns: {
           store_id: string
           store_code: string
@@ -3892,6 +3901,10 @@ export type Database = {
       }
       mark_razorpay_payment_failed: {
         Args: { p_provider_order_id: string }
+        Returns: undefined
+      }
+      mark_shipment_attempted: {
+        Args: { p_shipment_id: string }
         Returns: undefined
       }
       next_document_number: {
@@ -3972,6 +3985,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      record_shipment_webhook_event: {
+        Args: {
+          p_awb?: string
+          p_event_type: string
+          p_provider: string
+          p_provider_event_id: string
+          p_provider_shipment_id?: string
+          p_raw_payload: Json
+          p_tracking_status?: string
+        }
+        Returns: { is_new_event: boolean; matched: boolean }[]
+      }
       record_stock_movement: {
         Args: {
           p_adjustment_reason?: Database["public"]["Enums"]["stock_adjustment_reason"]
@@ -4001,6 +4026,10 @@ export type Database = {
       reserve_online_order_stock: {
         Args: { p_order_id: string }
         Returns: number
+      }
+      resolve_shipment_attempt_as_retryable: {
+        Args: { p_shipment_id: string }
+        Returns: undefined
       }
       sale_belongs_to_org: { Args: { p_sale_id: string }; Returns: boolean }
       set_primary_product_media: {

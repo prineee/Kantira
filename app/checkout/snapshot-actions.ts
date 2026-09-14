@@ -68,16 +68,6 @@ export async function createCheckoutSessionAction(params: {
 
   if (!address) return { ok: false, error: "Delivery address not found." };
 
-  const storeResult = await resolveFulfillmentStore(supabase, customer.organization_id);
-  if (!storeResult.ok) {
-    return { ok: false, error: `Delivery is not currently available: ${storeResult.reason}` };
-  }
-
-  const pickupResult = await resolveActivePickupMapping(supabase, customer.organization_id, storeResult.storeId);
-  if (!pickupResult.ok) {
-    return { ok: false, error: `Delivery is not currently available: ${pickupResult.reason}` };
-  }
-
   const itemIds = summary.lines.map((line) => line.itemId);
   const { data: items } = await supabase
     .from("items")
@@ -93,6 +83,21 @@ export async function createCheckoutSessionAction(params: {
   );
   if (!weightResult.ok) {
     return { ok: false, error: weightResult.reason };
+  }
+
+  const storeResult = await resolveFulfillmentStore(supabase, customer.organization_id, {
+    deliveryPostcode: address.postal_code,
+    weightKg: weightResult.totalWeightKg,
+    cod: paymentMethod === "COD",
+    itemLines: summary.lines.map((line) => ({ itemId: line.itemId, quantity: line.quantity })),
+  });
+  if (!storeResult.ok) {
+    return { ok: false, error: `Delivery is not currently available: ${storeResult.reason}` };
+  }
+
+  const pickupResult = await resolveActivePickupMapping(supabase, customer.organization_id, storeResult.storeId);
+  if (!pickupResult.ok) {
+    return { ok: false, error: `Delivery is not currently available: ${pickupResult.reason}` };
   }
 
   let freshShippingTotal: number;

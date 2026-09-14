@@ -190,6 +190,150 @@ test("resolveActivePickupMapping: a valid single mapping resolves to that pickup
   });
 });
 
+// ============================================================
+// Phase 5A-2: shipping-aware selection mode (the optional third param).
+// Omitting it (all tests above) preserves the exact pre-5A-2 behavior.
+// ============================================================
+
+function mockSupabaseCapturingArgs(candidates: Candidate[]) {
+  const calls: unknown[] = [];
+  return {
+    supabase: {
+      rpc: async (_fn: string, args?: unknown) => {
+        calls.push(args);
+        return { data: candidates, error: null };
+      },
+    },
+    calls,
+  };
+}
+
+test("resolveFulfillmentStore (shipping-aware): passes cart items through to the RPC as p_items", async () => {
+  const { supabase, calls } = mockSupabaseCapturingArgs([]);
+  await resolveFulfillmentStore(supabase, ORG_ID, {
+    deliveryPostcode: "400001",
+    weightKg: 1,
+    cod: false,
+    itemLines: [{ itemId: "item-1", quantity: 2 }],
+  });
+  assert.deepEqual(calls[0], { p_items: [{ item_id: "item-1", quantity: 2 }] });
+});
+
+test("resolveFulfillmentStore (shipping-aware): no candidates at all (e.g. none in stock) fails", async () => {
+  const { supabase } = mockSupabaseCapturingArgs([]);
+  const result = await resolveFulfillmentStore(supabase, ORG_ID, {
+    deliveryPostcode: "400001",
+    weightKg: 1,
+    cod: false,
+    itemLines: [{ itemId: "item-1", quantity: 1 }],
+  });
+  assert.equal(result.ok, false);
+});
+
+test("resolveFulfillmentStore (shipping-aware): a candidate with no Shiprocket mapping is skipped, never auto-selected", async () => {
+  _resetShiprocketConfigForTests();
+  invalidateShiprocketToken();
+  await withEnv(TEST_ENV, async () => {
+    const { supabase } = mockSupabaseCapturingArgs([
+      { store_id: STORE_A, store_code: "MAIN", created_at: "2026-01-01T00:00:00Z", provider_location_id: null, provider_location_name: null },
+    ]);
+    const result = await resolveFulfillmentStore(supabase, ORG_ID, {
+      deliveryPostcode: "400001",
+      weightKg: 1,
+      cod: false,
+      itemLines: [{ itemId: "item-1", quantity: 1 }],
+    });
+    // No mapped candidate at all -> never reaches the network, fails cleanly.
+    assert.equal(result.ok, false);
+  });
+});
+
+test("resolveFulfillmentStore (shipping-aware): skips a mapped-but-not-serviceable store and picks the next serviceable candidate", async () => {
+  _resetShiprocketConfigForTests();
+  invalidateShiprocketToken();
+  await withEnv(TEST_ENV, async () => {
+    const { supabase } = mockSupabaseCapturingArgs([
+      { store_id: STORE_A, store_code: "MAIN", created_at: "2026-01-01T00:00:00Z", provider_location_id: "111", provider_location_name: "One" },
+      { store_id: STORE_B, store_code: "SECOND", created_at: "2026-02-01T00:00:00Z", provider_location_id: "222", provider_location_name: "Two" },
+    ]);
+    const mock = installMockFetch([
+      { match: (url) => url.endsWith("/auth/login"), respond: () => ({ status: 200, body: { token: "t" } }) },
+      {
+        match: (url) => url.includes("/settings/company/pickup"),
+        respond: () => ({
+          status: 200,
+          body: {
+            data: {
+              shipping_address: [
+                { id: 111, pickup_location: "One", city: "A", state: "A", country: "India", pin_code: "100001", status: 1, phone_verified: 1 },
+                { id: 222, pickup_location: "Two", city: "B", state: "B", country: "India", pin_code: "200002", status: 1, phone_verified: 1 },
+              ],
+            },
+          },
+        }),
+      },
+      {
+        match: (url) => url.includes("/courier/serviceability/") && url.includes("pickup_postcode=100001"),
+        respond: () => ({ status: 200, body: { status: 404, message: "No courier service available" } }),
+      },
+      {
+        match: (url) => url.includes("/courier/serviceability/") && url.includes("pickup_postcode=200002"),
+        respond: () => ({
+          status: 200,
+          body: { data: { available_courier_companies: [{ courier_company_id: 1, courier_name: "C", is_surface: true, charge_weight: 1, freight_charge: 50, cod_charges: 0, rate: 50, estimated_delivery_days: null, etd: null, rating: null, blocked: 0 }] } },
+        }),
+      },
+    ]);
+    try {
+      const result = await resolveFulfillmentStore(supabase, ORG_ID, {
+        deliveryPostcode: "900009",
+        weightKg: 1,
+        cod: false,
+        itemLines: [{ itemId: "item-1", quantity: 1 }],
+      });
+      assert.equal(result.ok, true);
+      if (result.ok) assert.equal(result.storeId, STORE_B);
+    } finally {
+      mock.restore();
+    }
+  });
+});
+
+test("resolveFulfillmentStore (shipping-aware): no candidate is serviceable -> fails, does not fall back to an unserviceable guess", async () => {
+  _resetShiprocketConfigForTests();
+  invalidateShiprocketToken();
+  await withEnv(TEST_ENV, async () => {
+    const { supabase } = mockSupabaseCapturingArgs([
+      { store_id: STORE_A, store_code: "MAIN", created_at: "2026-01-01T00:00:00Z", provider_location_id: "111", provider_location_name: "One" },
+    ]);
+    const mock = installMockFetch([
+      { match: (url) => url.endsWith("/auth/login"), respond: () => ({ status: 200, body: { token: "t" } }) },
+      {
+        match: (url) => url.includes("/settings/company/pickup"),
+        respond: () => ({
+          status: 200,
+          body: { data: { shipping_address: [{ id: 111, pickup_location: "One", city: "A", state: "A", country: "India", pin_code: "100001", status: 1, phone_verified: 1 }] } },
+        }),
+      },
+      {
+        match: (url) => url.includes("/courier/serviceability/"),
+        respond: () => ({ status: 200, body: { status: 404, message: "No courier service available" } }),
+      },
+    ]);
+    try {
+      const result = await resolveFulfillmentStore(supabase, ORG_ID, {
+        deliveryPostcode: "900009",
+        weightKg: 1,
+        cod: false,
+        itemLines: [{ itemId: "item-1", quantity: 1 }],
+      });
+      assert.equal(result.ok, false);
+    } finally {
+      mock.restore();
+    }
+  });
+});
+
 test("resolveActivePickupMapping: a mapping pointing at a pickup location Shiprocket no longer returns is a safe error, not a crash", async () => {
   _resetShiprocketConfigForTests();
   invalidateShiprocketToken();

@@ -32,7 +32,9 @@ export default async function OrderDetailPage({ params }: { params: { id: string
 
   const { data: shipment } = await supabase
     .from("shipments")
-    .select("id, status, provider, provider_shipment_id, provider_awb, courier_name, last_error, shipped_at, delivered_at")
+    .select(
+      "id, status, provider, provider_shipment_id, provider_awb, courier_name, last_error, shipped_at, delivered_at, attempt_count, last_tracking_status",
+    )
     .eq("online_order_id", order.id)
     .maybeSingle();
 
@@ -151,6 +153,12 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                 </dd>
               </div>
             ) : null}
+            {shipment.last_tracking_status ? (
+              <div>
+                <dt className="text-brand-slate">Latest tracking update</dt>
+                <dd className="font-medium text-kantira-navy-900">{shipment.last_tracking_status}</dd>
+              </div>
+            ) : null}
           </dl>
         </section>
       ) : null}
@@ -159,6 +167,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
         <h3 className="mb-4 text-base font-semibold text-kantira-navy-900">Actions</h3>
         <OrderActions
           orderId={order.id}
+          orderNumber={order.order_number}
           status={order.status}
           hasStore={Boolean(order.fulfillment_store_id)}
           shipment={shipment ?? null}

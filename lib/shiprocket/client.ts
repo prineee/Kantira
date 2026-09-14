@@ -11,27 +11,40 @@ import { ShiprocketError } from "./errors";
 // specific verified contract for that endpoint (see serviceability.ts,
 // pickup.ts) — this file has no opinion on any endpoint's shape.
 
-async function requestOnce(path: string, token: string): Promise<Response> {
+async function requestOnce(
+  path: string,
+  token: string,
+  method: "GET" | "POST",
+  body?: unknown,
+): Promise<Response> {
   const config = getShiprocketConfig();
   return fetchWithTimeout(`${config.baseUrl}${path}`, {
-    method: "GET",
-    headers: { Authorization: `Bearer ${token}` },
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+    },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
 }
 
-export async function shiprocketGet(path: string): Promise<unknown> {
+async function request(path: string, method: "GET" | "POST", body?: unknown): Promise<unknown> {
   let token = await getShiprocketToken();
-  let res = await requestOnce(path, token);
+  let res = await requestOnce(path, token, method, body);
 
   if (res.status === 401) {
-    // Verified live: an invalid/expired token gets HTTP 401 with body
-    // { error_id, message, status_code, timestamp }. Since no expiry is
-    // ever returned at login (see auth.ts), this is the only signal we
+    // Verified live (GET path only — see auth.ts): an invalid/expired token
+    // gets HTTP 401 with body { error_id, message, status_code, timestamp }.
+    // Since no expiry is ever returned at login, this is the only signal we
     // have that the cached token has gone stale — re-authenticate once and
-    // retry, rather than looping.
+    // retry, rather than looping. Applied identically to POST: a stale
+    // token is a stale token regardless of verb, and re-sending an
+    // unauthenticated mutation (never one that already reached Shiprocket's
+    // business logic) is safe — the 401 happens at the auth layer, before
+    // any order/shipment mutation is attempted server-side by Shiprocket.
     invalidateShiprocketToken();
     token = await getShiprocketToken();
-    res = await requestOnce(path, token);
+    res = await requestOnce(path, token, method, body);
   }
 
   const text = await res.text();
@@ -56,4 +69,18 @@ export async function shiprocketGet(path: string): Promise<unknown> {
   }
 
   return json;
+}
+
+export async function shiprocketGet(path: string): Promise<unknown> {
+  return request(path, "GET");
+}
+
+// Mutation calls (order/AWB creation) reuse the exact same auth/retry/
+// timeout/error-normalization path as shiprocketGet — nothing about
+// KANTIRA's side of the contract differs for a POST; only the verified
+// response *shape* per endpoint differs, and that's each caller's own
+// responsibility (see order.ts), exactly like shiprocketGet already
+// delegates shape-normalization to serviceability.ts/pickup.ts.
+export async function shiprocketPost(path: string, body: unknown): Promise<unknown> {
+  return request(path, "POST", body);
 }

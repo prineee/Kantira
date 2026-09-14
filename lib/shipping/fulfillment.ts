@@ -1,4 +1,5 @@
 import { listPickupLocations } from "@/lib/shiprocket/pickup";
+import { getShippingQuote } from "@/lib/shiprocket/serviceability";
 
 // Server-only. Resolves "which store fulfills this order" and "that
 // store's active Shiprocket pickup location" for the pre-order checkout
@@ -10,28 +11,40 @@ import { listPickupLocations } from "@/lib/shiprocket/pickup";
 // (migration 0015). It is not reused here, and not reimplemented here,
 // because doing so would mean duplicating its stock-sufficiency check
 // against tables that are staff-only under RLS for a customer session.
-// What this file *does* provide, correctly: the same store-priority
-// ordering auto_allocate_online_order_store uses (active-Shiprocket-
-// mapping first, then created_at, then store_code) minus its stock check —
-// a provisional pick for quoting purposes only. Because the real allocator
-// may later pick a different store (it additionally checks stock), any
-// quote based on this resolution is provisional and must be revalidated
-// once the real allocation happens — this file does not attempt to solve
-// that staleness question, only to avoid pretending it doesn't exist.
 //
 // RLS NOTE (Phase 5B-8E): `stores` and `store_shipping_config` are
 // staff-only under RLS (stores_select, store_shipping_config_select_staff),
-// so a customer-scoped Supabase client cannot read either table directly —
-// this was a real, reported gap as of Phase 5B-8D. It is closed here by
-// routing both reads through a single narrowly-scoped SECURITY DEFINER
-// function, get_checkout_fulfillment_candidates() (migration 0020), which
-// returns only store id/code/created_at plus the store's active Shiprocket
-// mapping's provider_location_id/name, scoped to the caller's own
-// organization via the same auth_user_id -> customers linkage every other
-// customer-self policy already uses. It never exposes store address/
-// phone/city, the raw store_shipping_config row, or anything Shiprocket-
-// credential-related. The ordering/selection logic below is unchanged from
-// Phase 5B-8D — only where the rows come from changed.
+// so a customer-scoped Supabase client cannot read either table directly.
+// This is closed by routing both reads through a single narrowly-scoped
+// SECURITY DEFINER function, get_checkout_fulfillment_candidates()
+// (migration 0020, extended additively in 0028 with an optional stock
+// filter), scoped to the caller's own organization via the same
+// auth_user_id -> customers linkage every other customer-self policy
+// already uses. It never exposes store address/phone/city, the raw
+// store_shipping_config row, or anything Shiprocket-credential-related.
+//
+// PHASE 5A-2: resolveFulfillmentStore() gained an OPTIONAL third
+// parameter. Called with only (supabase, organizationId) — its original
+// signature — behavior is byte-identical to before: soft-priority pick
+// (mapped-first, then created_at, then store_code), no stock check, no
+// serviceability check. This preserves every existing test/call site
+// unchanged. Passed a `ShippingAwareSelectionInput`, it instead: (1) asks
+// get_checkout_fulfillment_candidates() to pre-filter to stores that can
+// cover every cart line's quantity (via available_to_sell), then (2)
+// walks the same priority-ordered candidate list and picks the FIRST one
+// whose mapped pickup location is actually serviceable to the customer's
+// destination pincode (a real getShippingQuote call per candidate, in
+// priority order, stopping at the first match) — this is what makes
+// selection genuinely shipping-aware rather than a single soft guess. A
+// candidate with no Shiprocket mapping at all is skipped outright in this
+// mode (it cannot be serviceability-checked, so it is not safe to
+// auto-select for a real shipment) — this is intentionally stricter than
+// the default/legacy branch, per the approved Phase 5A-2 algorithm. If no
+// candidate is both stocked and serviceable, `{ ok: false }` is returned
+// exactly as the "no active stores" case always has been — the caller
+// (checkout) already treats that as "cannot fulfill," and an order that
+// still reaches CONFIRMED with no store lands in the existing
+// stalled-order/Needs-Attention flow, unchanged.
 
 export type StoreResolution = { ok: true; storeId: string } | { ok: false; reason: string };
 
@@ -46,22 +59,107 @@ type FulfillmentCandidate = {
 type SupabaseLike = {
   rpc: (
     fn: "get_checkout_fulfillment_candidates",
+    args?: { p_items?: { item_id: string; quantity: number }[] },
   ) => PromiseLike<{ data: unknown; error: unknown }>;
 };
 
-async function fetchFulfillmentCandidates(supabase: SupabaseLike): Promise<FulfillmentCandidate[]> {
-  const { data } = await supabase.rpc("get_checkout_fulfillment_candidates");
+async function fetchFulfillmentCandidates(
+  supabase: SupabaseLike,
+  items?: { item_id: string; quantity: number }[],
+): Promise<FulfillmentCandidate[]> {
+  const { data } = await supabase.rpc(
+    "get_checkout_fulfillment_candidates",
+    items ? { p_items: items } : undefined,
+  );
   return (data ?? []) as FulfillmentCandidate[];
+}
+
+function sortByPriority(stores: FulfillmentCandidate[]): FulfillmentCandidate[] {
+  return [...stores].sort((a, b) => {
+    const aMapped = a.provider_location_id ? 1 : 0;
+    const bMapped = b.provider_location_id ? 1 : 0;
+    if (aMapped !== bMapped) return bMapped - aMapped;
+    const byCreated = a.created_at.localeCompare(b.created_at);
+    if (byCreated !== 0) return byCreated;
+    return a.store_code.localeCompare(b.store_code);
+  });
+}
+
+export type ShippingAwareSelectionInput = {
+  deliveryPostcode: string;
+  weightKg: number;
+  cod: boolean;
+  itemLines: { itemId: string; quantity: number }[];
+};
+
+async function resolveFulfillmentStoreShippingAware(
+  supabase: SupabaseLike,
+  shipping: ShippingAwareSelectionInput,
+): Promise<StoreResolution> {
+  const candidates = await fetchFulfillmentCandidates(
+    supabase,
+    shipping.itemLines.map((l) => ({ item_id: l.itemId, quantity: l.quantity })),
+  );
+
+  const byStore = new Map<string, FulfillmentCandidate>();
+  for (const c of candidates) {
+    if (!byStore.has(c.store_id)) byStore.set(c.store_id, c);
+  }
+  const sorted = sortByPriority([...byStore.values()]);
+
+  if (sorted.length === 0) {
+    return {
+      ok: false,
+      reason: "No fulfillment store currently has stock for this order.",
+    };
+  }
+
+  // Fetched once and reused across candidates rather than once per
+  // candidate — this is a read-only account-level list, not per-store.
+  let pickupLocations: Awaited<ReturnType<typeof listPickupLocations>> | null = null;
+
+  for (const candidate of sorted) {
+    if (!candidate.provider_location_id) continue; // unmapped: not safe to auto-select
+
+    if (!pickupLocations) {
+      pickupLocations = await listPickupLocations();
+    }
+    const location = pickupLocations.find(
+      (loc) => String(loc.id) === candidate.provider_location_id,
+    );
+    if (!location) continue; // mapping points at a location Shiprocket no longer returns
+
+    const quote = await getShippingQuote({
+      pickupPostcode: location.pinCode,
+      deliveryPostcode: shipping.deliveryPostcode,
+      weightKg: shipping.weightKg,
+      cod: shipping.cod,
+    });
+
+    if (quote.serviceable) {
+      return { ok: true, storeId: candidate.store_id };
+    }
+  }
+
+  return {
+    ok: false,
+    reason: "No fulfillment store can currently ship to this address.",
+  };
 }
 
 export async function resolveFulfillmentStore(
   supabase: SupabaseLike,
-  // Kept for interface stability with existing callers (app/checkout/actions.ts)
-  // and as documentation of intent — organization scoping now happens
-  // inside get_checkout_fulfillment_candidates() itself (via auth.uid()),
-  // not via a client-supplied value, so it is not used to build the query.
+  // Kept for interface stability with existing callers and as
+  // documentation of intent — organization scoping happens inside
+  // get_checkout_fulfillment_candidates() itself (via auth.uid()), not via
+  // a client-supplied value, so it is not used to build any query.
   _organizationId: string,
+  shippingAware?: ShippingAwareSelectionInput,
 ): Promise<StoreResolution> {
+  if (shippingAware) {
+    return resolveFulfillmentStoreShippingAware(supabase, shippingAware);
+  }
+
   const candidates = await fetchFulfillmentCandidates(supabase);
 
   const byStore = new Map<string, FulfillmentCandidate>();
@@ -77,15 +175,7 @@ export async function resolveFulfillmentStore(
     };
   }
 
-  const sorted = stores.sort((a, b) => {
-    const aMapped = a.provider_location_id ? 1 : 0;
-    const bMapped = b.provider_location_id ? 1 : 0;
-    if (aMapped !== bMapped) return bMapped - aMapped;
-    const byCreated = a.created_at.localeCompare(b.created_at);
-    if (byCreated !== 0) return byCreated;
-    return a.store_code.localeCompare(b.store_code);
-  });
-
+  const sorted = sortByPriority(stores);
   return { ok: true, storeId: sorted[0]!.store_id };
 }
 
