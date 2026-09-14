@@ -14,6 +14,7 @@ import {
   ShoppingCart,
   Receipt,
   Store,
+  PackageSearch,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { href: "/suppliers", label: "Suppliers", icon: Truck },
   { href: "/purchases", label: "Purchases", icon: ShoppingCart },
   { href: "/sales", label: "Sales", icon: Receipt },
+  { href: "/orders", label: "Online orders", icon: PackageSearch },
   { href: "/accounts", label: "Accounts", icon: BookOpenText },
   { href: "/stock", label: "Stock", icon: Boxes },
 ];
