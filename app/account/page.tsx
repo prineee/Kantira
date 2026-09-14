@@ -1,15 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LogOut, MapPin, ShoppingCart } from "lucide-react";
+import { LogOut, MapPin, Package, ShoppingCart } from "lucide-react";
 import { requireCustomerContext } from "@/lib/actions/customer-auth";
 import { signOut } from "@/app/dashboard/actions";
 
-// Foundation-only customer landing page (Phase 3B). Deliberately not built
-// on KantiraShell — that shell's nav (Items, Stores, Accounts, Stock, ...)
-// is internal Business OS surface a customer must never see. Browsing,
-// cart, checkout, and order history are separate, later work; this page
-// only proves the routing/authorization split: a customer identity lands
-// here, never in the internal dashboard.
+// Customer account landing page. Deliberately not built on KantiraShell —
+// that shell's nav (Items, Stores, Accounts, Stock, ...) is internal
+// Business OS surface a customer must never see; this page only proves the
+// routing/authorization split: a customer identity lands here, never in the
+// internal dashboard.
 export default async function AccountPage() {
   const ctx = await requireCustomerContext();
 
@@ -53,10 +52,19 @@ export default async function AccountPage() {
           Welcome, {customer.name}
         </h1>
         <p className="mt-2 text-sm text-brand-slate">
-          Your KANTIRA account. Order history is coming soon.
+          Your KANTIRA account.
         </p>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <Link
+            href="/account/orders"
+            className="flex items-center gap-3 rounded-card border border-kantira-navy-100 bg-white p-4 shadow-sm transition hover:border-brand-royal"
+          >
+            <Package size={20} className="text-brand-royal" />
+            <span className="text-sm font-semibold text-kantira-navy-900">
+              Your orders
+            </span>
+          </Link>
           <Link
             href="/account/addresses"
             className="flex items-center gap-3 rounded-card border border-kantira-navy-100 bg-white p-4 shadow-sm transition hover:border-brand-royal"

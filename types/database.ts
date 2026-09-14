@@ -2751,6 +2751,133 @@ export type Database = {
           },
         ]
       }
+      shipment_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          organization_id: string
+          provider: string
+          provider_event_id: string
+          raw_payload: Json | null
+          shipment_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          organization_id: string
+          provider: string
+          provider_event_id: string
+          raw_payload?: Json | null
+          shipment_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          organization_id?: string
+          provider?: string
+          provider_event_id?: string
+          raw_payload?: Json | null
+          shipment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipments: {
+        Row: {
+          courier_id: string | null
+          courier_name: string | null
+          created_at: string
+          delivered_at: string | null
+          fulfillment_store_id: string
+          id: string
+          last_error: string | null
+          online_order_id: string
+          organization_id: string
+          provider: string
+          provider_awb: string | null
+          provider_order_id: string | null
+          provider_shipment_id: string | null
+          shipped_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          courier_id?: string | null
+          courier_name?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          fulfillment_store_id: string
+          id?: string
+          last_error?: string | null
+          online_order_id: string
+          organization_id: string
+          provider?: string
+          provider_awb?: string | null
+          provider_order_id?: string | null
+          provider_shipment_id?: string | null
+          shipped_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          courier_id?: string | null
+          courier_name?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          fulfillment_store_id?: string
+          id?: string
+          last_error?: string | null
+          online_order_id?: string
+          organization_id?: string
+          provider?: string
+          provider_awb?: string | null
+          provider_order_id?: string | null
+          provider_shipment_id?: string | null
+          shipped_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_fulfillment_store_id_fkey"
+            columns: ["fulfillment_store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_online_order_id_fkey"
+            columns: ["online_order_id"]
+            isOneToOne: true
+            referencedRelation: "online_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_movement_costs: {
         Row: {
           adjustment_reason:
@@ -3432,6 +3559,34 @@ export type Database = {
           },
         ]
       }
+      stalled_fulfillment_orders: {
+        Row: {
+          customer_id: string | null
+          grand_total: number | null
+          order_id: string | null
+          order_number: string | null
+          organization_id: string | null
+          payment_status: string | null
+          placed_at: string | null
+          status: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "online_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "online_orders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_balances: {
         Row: {
           item_id: string | null
@@ -3543,6 +3698,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      complete_stalled_order_fulfillment: {
+        Args: { p_order_id: string; p_store_id: string }
+        Returns: undefined
+      }
       confirm_razorpay_payment_and_finalize: {
         Args: {
           p_amount: number
@@ -3627,6 +3786,10 @@ export type Database = {
           out_payment_intent_id: string
           out_provider_order_id: string
         }[]
+      }
+      create_shipment_pending: {
+        Args: { p_order_id: string }
+        Returns: string
       }
       create_stock_transfer: {
         Args: {
@@ -3791,6 +3954,23 @@ export type Database = {
       rebuild_item_store_cost: {
         Args: { p_item_id: string; p_store_id: string }
         Returns: number
+      }
+      record_shipment_delivered: {
+        Args: { p_provider: string; p_provider_shipment_id: string }
+        Returns: undefined
+      }
+      record_shipment_result: {
+        Args: {
+          p_awb?: string
+          p_courier_id?: string
+          p_courier_name?: string
+          p_error_message?: string
+          p_provider_order_id?: string
+          p_provider_shipment_id?: string
+          p_shipment_id: string
+          p_success: boolean
+        }
+        Returns: undefined
       }
       record_stock_movement: {
         Args: {
