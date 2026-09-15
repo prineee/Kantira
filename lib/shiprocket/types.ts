@@ -162,10 +162,22 @@ export type AssignAwbResult =
  * actually take effect on Shiprocket's side?", keyed by the same
  * channelOrderId used in CreateOrderInput. Endpoint/shape per Shiprocket's
  * published "Get order details" filtered-by-channel-order-id contract —
- * unverified live, same caveat as above. */
+ * unverified live, same caveat as above.
+ *
+ * Three-way, deliberately: a well-formed response with no matching row is
+ * a genuine, actionable "not_found" (safe to resolve back to PENDING). A
+ * response that cannot be recognized at all (missing/wrong-shaped `data`,
+ * or a matching row missing the fields needed to trust it) is "unknown" —
+ * NEVER collapsed into "not_found", because a false not_found could let a
+ * human retry into a duplicate real Shiprocket order. Only "found" and
+ * "not_found" may ever resolve the shipment; "unknown" must leave it
+ * ATTEMPTED for manual reconciliation (see app/orders/actions.ts's
+ * reconcileShipmentAttempt). A thrown ShiprocketError (network/timeout/
+ * api_error) is a distinct, separate case — never turned into any of
+ * these three — handled by the caller's own try/catch. */
 export type OrderLookupResult =
   | {
-      found: true;
+      status: "found";
       providerOrderId: string;
       providerShipmentId: string | null;
       providerStatus: string | null;
@@ -173,4 +185,5 @@ export type OrderLookupResult =
       courierCompanyId: number | null;
       courierName: string | null;
     }
-  | { found: false };
+  | { status: "not_found" }
+  | { status: "unknown"; reason: string };

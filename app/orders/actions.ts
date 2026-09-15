@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireOrgContext } from "@/lib/actions/auth";
 import { calculateTotalShipmentWeightKg } from "@/lib/shipping/weight";
+import { validatePackageData, type PackageDataInput } from "@/lib/shipping/package";
 import { createShiprocketOrder, assignAwb, getOrderByChannelId } from "@/lib/shiprocket/order";
 import { ShiprocketError } from "@/lib/shiprocket/errors";
 
@@ -79,26 +80,37 @@ export async function resolveStalledOrder(
 //   1. create_shipment_pending — commits a PENDING shipment row (or reuses
 //      the existing one). Its own transaction, already committed by the
 //      time this function's next line runs.
-//   2. Re-read every field the Shiprocket payload needs directly from the
-//      DB, server-side (order, lines, item sku/hsn, customer, shipping
-//      address, store's pickup mapping) — never from a browser argument.
-//      This function takes only orderId; nothing else.
-//   3. mark_shipment_attempted — a SEPARATE, already-committed transaction
+//   2. get_shipment_package_data — read whatever actual packed-parcel data
+//      (weight off a scale, dimensions off the real box) is already
+//      persisted on this shipment. If none exists yet, `packageData` is
+//      required, validated (lib/shipping/package.ts), and persisted via
+//      set_shipment_package_data BEFORE anything else happens — a
+//      validation failure here returns an error with NO RPC call beyond
+//      create_shipment_pending, no ATTEMPTED state, no order-state change
+//      (Phase 5A-2 package-data architecture; NEVER a 10x10x10 or
+//      computed-weight placeholder). If package data already exists (a
+//      retry), it is reused exactly as stored — never re-prompted,
+//      re-read from a fresher source, or recalculated.
+//   3. Re-read every other field the Shiprocket payload needs directly
+//      from the DB, server-side (order, lines, item sku/hsn, customer,
+//      shipping address, store's pickup mapping) — never from a browser
+//      argument.
+//   4. mark_shipment_attempted — a SEPARATE, already-committed transaction
 //      that records "an attempt is in flight" BEFORE the HTTP call below.
-//      If the process crashes between here and step 4, the shipment is
+//      If the process crashes between here and step 5, the shipment is
 //      left in ATTEMPTED, not silently lost as PENDING — exactly the state
 //      reconcileShipmentAttempt() below exists to resolve.
-//   4. createShiprocketOrder() — the actual external call, outside any DB
-//      transaction.
-//   5. Depending on outcome:
+//   5. createShiprocketOrder() — the actual external call, outside any DB
+//      transaction, using the package data resolved in step 2.
+//   6. Depending on outcome:
 //      - definite success -> record_shipment_result(success=true, ...real
 //        provider ids...) -> shipment CREATED, order auto-advances to
 //        SHIPPED (inside that RPC, unchanged from 0026).
 //      - definite failure (Shiprocket rejected the request) ->
 //        record_shipment_result(success=false, ...) -> shipment FAILED,
-//        safely retryable from PENDING.
+//        safely retryable from PENDING (package data stays persisted).
 //      - timeout/network error (uncertain — Rule #5) -> NEITHER RPC is
-//        called. The shipment stays ATTEMPTED, exactly where step 3 left
+//        called. The shipment stays ATTEMPTED, exactly where step 4 left
 //        it, and the UI must surface "reconciliation needed" rather than
 //        silently retrying or silently failing.
 // ============================================================
@@ -109,7 +121,42 @@ export type CreateShipmentResult =
   | { outcome: "uncertain" }
   | { outcome: "error"; error: string };
 
-export async function createShipment(orderId: string): Promise<CreateShipmentResult> {
+// Estimate only — a pre-fill convenience for the "Create Shipment" form,
+// computed the same way checkout's own shipping quote is (authoritative
+// items.weight_kg x quantity). NEVER the value actually sent to Shiprocket
+// — that is always the staff-confirmed figure persisted via
+// set_shipment_package_data (see createShipment below). Staff sees this
+// clearly labeled as an estimate in the UI and can override it.
+export type EstimatedWeightResult = { ok: true; weightKg: number } | { ok: false; reason: string };
+
+export async function getEstimatedPackageWeight(orderId: string): Promise<EstimatedWeightResult> {
+  const ctx = await requireOrgContext();
+  if (ctx.error || !ctx.supabase) return { ok: false, reason: ctx.error ?? "Not authenticated." };
+  const { supabase } = ctx;
+
+  const { data: lines } = await supabase
+    .from("online_order_lines")
+    .select("item_id, quantity")
+    .eq("order_id", orderId);
+  if (!lines || lines.length === 0) {
+    return { ok: false, reason: "Order has no line items." };
+  }
+
+  const itemIds = lines.map((l) => l.item_id);
+  const { data: items } = await supabase.from("items").select("id, weight_kg").in("id", itemIds);
+  const weightById = new Map((items ?? []).map((i) => [i.id, i.weight_kg as number | null]));
+
+  const result = calculateTotalShipmentWeightKg(
+    lines.map((l) => ({ weightKg: weightById.get(l.item_id) ?? null, quantity: Math.round(l.quantity) })),
+  );
+  if (!result.ok) return { ok: false, reason: result.reason };
+  return { ok: true, weightKg: result.totalWeightKg };
+}
+
+export async function createShipment(
+  orderId: string,
+  packageData?: PackageDataInput,
+): Promise<CreateShipmentResult> {
   const ctx = await requireOrgContext();
   if (ctx.error || !ctx.supabase) return { outcome: "error", error: ctx.error ?? "Not authenticated." };
   const { supabase } = ctx;
@@ -119,6 +166,63 @@ export async function createShipment(orderId: string): Promise<CreateShipmentRes
   });
   if (pendingError || !shipmentId) {
     return { outcome: "error", error: pendingError?.message ?? "Could not start a shipment." };
+  }
+
+  // Package data (actual packed weight/dimensions) must exist on the
+  // shipment row BEFORE any Shiprocket attempt — so a timeout/reconcile
+  // retry always reuses the exact facts staff already confirmed, never a
+  // re-prompt or a silently recalculated value (Phase 5A-2 package-data
+  // architecture). Always read the persisted values fresh from the
+  // database via the SECURITY DEFINER accessor — never trust a caller's
+  // in-memory argument as the value actually sent to the provider.
+  const { data: existingRows, error: existingError } = await supabase.rpc("get_shipment_package_data", {
+    p_shipment_id: shipmentId,
+  });
+  if (existingError) return { outcome: "error", error: existingError.message };
+  const existing = existingRows?.[0];
+
+  let finalPackage: { deadWeightKg: number; lengthCm: number; breadthCm: number; heightCm: number };
+
+  if (
+    existing &&
+    existing.package_dead_weight_kg !== null &&
+    existing.package_length_cm !== null &&
+    existing.package_breadth_cm !== null &&
+    existing.package_height_cm !== null
+  ) {
+    // A retry of an already-packaged shipment (e.g. FAILED -> retry, or a
+    // reconciliation-confirmed PENDING) — reuse the stored facts exactly,
+    // never re-read/recalculate them, per the approved architecture.
+    finalPackage = {
+      deadWeightKg: existing.package_dead_weight_kg,
+      lengthCm: existing.package_length_cm,
+      breadthCm: existing.package_breadth_cm,
+      heightCm: existing.package_height_cm,
+    };
+  } else {
+    // First-time capture for this shipment — package data is mandatory.
+    // Validation failure here must NOT create an ATTEMPTED state, call
+    // Shiprocket, or alter order state — the shipment simply stays
+    // PENDING (already true at this point) and nothing further happens.
+    if (!packageData) {
+      return {
+        outcome: "error",
+        error: "Package weight and dimensions are required before creating this shipment.",
+      };
+    }
+    const validated = validatePackageData(packageData);
+    if (!validated.ok) {
+      return { outcome: "error", error: validated.reason };
+    }
+    const { error: setError } = await supabase.rpc("set_shipment_package_data", {
+      p_shipment_id: shipmentId,
+      p_package_dead_weight_kg: validated.data.deadWeightKg,
+      p_package_length_cm: validated.data.lengthCm,
+      p_package_breadth_cm: validated.data.breadthCm,
+      p_package_height_cm: validated.data.heightCm,
+    });
+    if (setError) return { outcome: "error", error: setError.message };
+    finalPackage = validated.data;
   }
 
   const { data: order } = await supabase
@@ -166,13 +270,6 @@ export async function createShipment(orderId: string): Promise<CreateShipmentRes
     .in("id", itemIds);
   const itemById = new Map((items ?? []).map((i) => [i.id, i]));
 
-  const weightResult = calculateTotalShipmentWeightKg(
-    lines.map((l) => ({ weightKg: itemById.get(l.item_id)?.weight_kg ?? null, quantity: Math.round(l.quantity) })),
-  );
-  if (!weightResult.ok) {
-    return { outcome: "error", error: weightResult.reason };
-  }
-
   const { error: attemptError } = await supabase.rpc("mark_shipment_attempted", {
     p_shipment_id: shipmentId,
   });
@@ -210,13 +307,14 @@ export async function createShipment(orderId: string): Promise<CreateShipmentRes
         tax: l.tax_amount,
         hsn: itemById.get(l.item_id)?.hsn_code ?? null,
       })),
-      weightKg: weightResult.totalWeightKg,
-      // KANTIRA does not model per-item physical dimensions today — see
-      // lib/shiprocket/types.ts's CreateOrderInput comment. Conservative
-      // placeholder, not derived from real product data.
-      lengthCm: 10,
-      breadthCm: 10,
-      heightCm: 10,
+      // Actual staff-confirmed packed-parcel data (Phase 5A-2 package-data
+      // architecture) — never a computed estimate or a placeholder. See
+      // finalPackage's own resolution above: either freshly validated and
+      // persisted this call, or reused unchanged from a prior attempt.
+      weightKg: finalPackage.deadWeightKg,
+      lengthCm: finalPackage.lengthCm,
+      breadthCm: finalPackage.breadthCm,
+      heightCm: finalPackage.heightCm,
     });
 
     if (!result.ok) {
@@ -294,6 +392,7 @@ export async function createShipment(orderId: string): Promise<CreateShipmentRes
 export type ReconcileResult =
   | { outcome: "found_created" }
   | { outcome: "confirmed_not_created" }
+  | { outcome: "unknown"; reason: string }
   | { outcome: "error"; error: string };
 
 export async function reconcileShipmentAttempt(
@@ -313,7 +412,7 @@ export async function reconcileShipmentAttempt(
     return { outcome: "error", error: message };
   }
 
-  if (lookup.found) {
+  if (lookup.status === "found") {
     const { error } = await supabase.rpc("record_shipment_result", {
       p_shipment_id: shipmentId,
       p_success: true,
@@ -328,6 +427,19 @@ export async function reconcileShipmentAttempt(
     return { outcome: "found_created" };
   }
 
+  if (lookup.status === "unknown") {
+    // CRITICAL SAFETY RULE: an unrecognized/ambiguous provider response
+    // must NEVER be treated as "not found". Resolving it to PENDING here
+    // would let a subsequent retry create a second, real Shiprocket order
+    // if the original request actually did succeed. Leave the shipment
+    // exactly where it is (ATTEMPTED) — no RPC call, no state change —
+    // and require a human to resolve it (e.g. via the manual override,
+    // after checking Shiprocket's own dashboard directly).
+    return { outcome: "unknown", reason: lookup.reason };
+  }
+
+  // lookup.status === "not_found" — the ONLY status permitted to proceed
+  // to the existing retryable path.
   const { error } = await supabase.rpc("resolve_shipment_attempt_as_retryable", {
     p_shipment_id: shipmentId,
   });

@@ -213,7 +213,7 @@ test("assignAwb: a response missing awb_code is a normalized failure, not a fabr
   });
 });
 
-test("getOrderByChannelId: found=false when the response has no matching channel_order_id", async () => {
+test("getOrderByChannelId: definitive not_found when the response is well-formed but has no matching channel_order_id", async () => {
   _resetShiprocketConfigForTests();
   invalidateShiprocketToken();
   await withEnv(TEST_ENV, async () => {
@@ -223,14 +223,14 @@ test("getOrderByChannelId: found=false when the response has no matching channel
     ]);
     try {
       const result = await getOrderByChannelId("ONL-20260914-000001");
-      assert.equal(result.found, false);
+      assert.equal(result.status, "not_found");
     } finally {
       mock.restore();
     }
   });
 });
 
-test("getOrderByChannelId: a malformed/unexpected response shape is treated as not-found, never a false match", async () => {
+test("getOrderByChannelId: a malformed/unexpected response shape is unknown, never a false not_found", async () => {
   _resetShiprocketConfigForTests();
   invalidateShiprocketToken();
   await withEnv(TEST_ENV, async () => {
@@ -240,14 +240,56 @@ test("getOrderByChannelId: a malformed/unexpected response shape is treated as n
     ]);
     try {
       const result = await getOrderByChannelId("ONL-20260914-000001");
-      assert.equal(result.found, false);
+      assert.equal(result.status, "unknown");
+      if (result.status === "unknown") assert.match(result.reason, /data array/);
     } finally {
       mock.restore();
     }
   });
 });
 
-test("getOrderByChannelId: normalizes a matching order with a shipment", async () => {
+test("getOrderByChannelId: data present but not an array is unknown, not not_found", async () => {
+  _resetShiprocketConfigForTests();
+  invalidateShiprocketToken();
+  await withEnv(TEST_ENV, async () => {
+    const mock = installMockFetch([
+      authRoute(),
+      { match: (url) => url.includes("/orders"), respond: () => ({ status: 200, body: { data: { weird: true } } }) },
+    ]);
+    try {
+      const result = await getOrderByChannelId("ONL-20260914-000001");
+      assert.equal(result.status, "unknown");
+    } finally {
+      mock.restore();
+    }
+  });
+});
+
+test("getOrderByChannelId: an ambiguous matching row with no usable id is unknown, not found", async () => {
+  _resetShiprocketConfigForTests();
+  invalidateShiprocketToken();
+  await withEnv(TEST_ENV, async () => {
+    const mock = installMockFetch([
+      authRoute(),
+      {
+        match: (url) => url.includes("/orders"),
+        respond: () => ({
+          status: 200,
+          body: { data: [{ channel_order_id: "ONL-20260914-000001", status: "NEW" }] },
+        }),
+      },
+    ]);
+    try {
+      const result = await getOrderByChannelId("ONL-20260914-000001");
+      assert.equal(result.status, "unknown");
+      if (result.status === "unknown") assert.match(result.reason, /no usable id/);
+    } finally {
+      mock.restore();
+    }
+  });
+});
+
+test("getOrderByChannelId: normalizes a matching order with a shipment as found", async () => {
   _resetShiprocketConfigForTests();
   invalidateShiprocketToken();
   await withEnv(TEST_ENV, async () => {
@@ -272,8 +314,8 @@ test("getOrderByChannelId: normalizes a matching order with a shipment", async (
     ]);
     try {
       const result = await getOrderByChannelId("ONL-20260914-000001");
-      assert.equal(result.found, true);
-      if (result.found) {
+      assert.equal(result.status, "found");
+      if (result.status === "found") {
         assert.equal(result.providerOrderId, "12345");
         assert.equal(result.providerShipmentId, "67890");
         assert.equal(result.awbCode, "AWB123");

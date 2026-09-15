@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -540,6 +545,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "online_orders"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkout_sessions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "stalled_fulfillment_orders"
+            referencedColumns: ["order_id"]
           },
           {
             foreignKeyName: "checkout_sessions_organization_id_fkey"
@@ -1388,6 +1400,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "online_order_lines_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "stalled_fulfillment_orders"
+            referencedColumns: ["order_id"]
+          },
+          {
             foreignKeyName: "online_order_lines_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -1683,6 +1702,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "online_orders"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_intents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "stalled_fulfillment_orders"
+            referencedColumns: ["order_id"]
           },
           {
             foreignKeyName: "payment_intents_organization_id_fkey"
@@ -2813,6 +2839,10 @@ export type Database = {
           last_tracking_status: string | null
           online_order_id: string
           organization_id: string
+          package_breadth_cm: number | null
+          package_dead_weight_kg: number | null
+          package_height_cm: number | null
+          package_length_cm: number | null
           provider: string
           provider_awb: string | null
           provider_order_id: string | null
@@ -2834,6 +2864,10 @@ export type Database = {
           last_tracking_status?: string | null
           online_order_id: string
           organization_id: string
+          package_breadth_cm?: number | null
+          package_dead_weight_kg?: number | null
+          package_height_cm?: number | null
+          package_length_cm?: number | null
           provider?: string
           provider_awb?: string | null
           provider_order_id?: string | null
@@ -2855,6 +2889,10 @@ export type Database = {
           last_tracking_status?: string | null
           online_order_id?: string
           organization_id?: string
+          package_breadth_cm?: number | null
+          package_dead_weight_kg?: number | null
+          package_height_cm?: number | null
+          package_length_cm?: number | null
           provider?: string
           provider_awb?: string | null
           provider_order_id?: string | null
@@ -2877,6 +2915,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "online_orders"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_online_order_id_fkey"
+            columns: ["online_order_id"]
+            isOneToOne: true
+            referencedRelation: "stalled_fulfillment_orders"
+            referencedColumns: ["order_id"]
           },
           {
             foreignKeyName: "shipments_organization_id_fkey"
@@ -3082,6 +3127,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "online_orders"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservations_online_order_id_fkey"
+            columns: ["online_order_id"]
+            isOneToOne: false
+            referencedRelation: "stalled_fulfillment_orders"
+            referencedColumns: ["order_id"]
           },
           {
             foreignKeyName: "stock_reservations_online_order_line_id_fkey"
@@ -3579,6 +3631,26 @@ export type Database = {
           placed_at: string | null
           status: string | null
         }
+        Insert: {
+          customer_id?: string | null
+          grand_total?: number | null
+          order_id?: string | null
+          order_number?: string | null
+          organization_id?: string | null
+          payment_status?: string | null
+          placed_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          customer_id?: string | null
+          grand_total?: number | null
+          order_id?: string | null
+          order_number?: string | null
+          organization_id?: string | null
+          payment_status?: string | null
+          placed_at?: string | null
+          status?: string | null
+        }
         Relationships: [
           {
             foreignKeyName: "online_orders_customer_id_fkey"
@@ -3796,10 +3868,7 @@ export type Database = {
           out_provider_order_id: string
         }[]
       }
-      create_shipment_pending: {
-        Args: { p_order_id: string }
-        Returns: string
-      }
+      create_shipment_pending: { Args: { p_order_id: string }; Returns: string }
       create_stock_transfer: {
         Args: {
           p_from_store_id: string
@@ -3849,16 +3918,23 @@ export type Database = {
       get_checkout_fulfillment_candidates: {
         Args: { p_items?: Json }
         Returns: {
-          store_id: string
-          store_code: string
           created_at: string
-          provider_location_id: string | null
-          provider_location_name: string | null
+          provider_location_id: string
+          provider_location_name: string
+          store_code: string
+          store_id: string
         }[]
       }
       get_control_account: {
         Args: {
           p_control_type: Database["public"]["Enums"]["control_account_type"]
+        }
+        Returns: string
+      }
+      get_control_account_for_org: {
+        Args: {
+          p_control_type: Database["public"]["Enums"]["control_account_type"]
+          p_org_id: string
         }
         Returns: string
       }
@@ -3874,29 +3950,45 @@ export type Database = {
         Args: { p_role: Database["public"]["Enums"]["ledger_account_role"] }
         Returns: string
       }
+      get_role_account_for_org: {
+        Args: {
+          p_org_id: string
+          p_role: Database["public"]["Enums"]["ledger_account_role"]
+        }
+        Returns: string
+      }
+      get_shipment_package_data: {
+        Args: { p_shipment_id: string }
+        Returns: {
+          package_breadth_cm: number
+          package_dead_weight_kg: number
+          package_height_cm: number
+          package_length_cm: number
+        }[]
+      }
       has_store_access: { Args: { target_store_id: string }; Returns: boolean }
       is_org_public_storefront: { Args: { p_org_id: string }; Returns: boolean }
       items_catalog_for_staff: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
-          id: string
-          organization_id: string
-          category_id: string | null
-          uom_id: string
-          sku: string
-          barcode: string | null
-          name: string
-          description: string | null
-          hsn_code: string | null
+          barcode: string
+          category_id: string
           cost_price: number
-          selling_price: number
-          tax_rate_percent: number
-          reorder_level: number
-          weight_kg: number | null
-          track_inventory: boolean
-          is_active: boolean
           created_at: string
+          description: string
+          hsn_code: string
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string
+          reorder_level: number
+          selling_price: number
+          sku: string
+          tax_rate_percent: number
+          track_inventory: boolean
+          uom_id: string
           updated_at: string
+          weight_kg: number
         }[]
       }
       mark_razorpay_payment_failed: {
@@ -3921,6 +4013,10 @@ export type Database = {
           out_order_number: string
           out_status: string
         }[]
+      }
+      post_online_order_accounting: {
+        Args: { p_order_id: string; p_payment_method: string }
+        Returns: string
       }
       post_purchase: { Args: { p_purchase_id: string }; Returns: string }
       post_purchase_return: {
@@ -3968,6 +4064,19 @@ export type Database = {
         Args: { p_item_id: string; p_store_id: string }
         Returns: number
       }
+      record_online_sale_stock_out: {
+        Args: {
+          p_attributed_profile_id: string
+          p_item_id: string
+          p_notes: string
+          p_org_id: string
+          p_quantity: number
+          p_reference: string
+          p_store_id: string
+          p_transaction_date: string
+        }
+        Returns: string
+      }
       record_shipment_delivered: {
         Args: { p_provider: string; p_provider_shipment_id: string }
         Returns: undefined
@@ -3995,7 +4104,10 @@ export type Database = {
           p_raw_payload: Json
           p_tracking_status?: string
         }
-        Returns: { is_new_event: boolean; matched: boolean }[]
+        Returns: {
+          is_new_event: boolean
+          matched: boolean
+        }[]
       }
       record_stock_movement: {
         Args: {
@@ -4027,6 +4139,10 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: number
       }
+      resolve_accounting_attribution_profile: {
+        Args: { p_org_id: string }
+        Returns: string
+      }
       resolve_shipment_attempt_as_retryable: {
         Args: { p_shipment_id: string }
         Returns: undefined
@@ -4034,6 +4150,16 @@ export type Database = {
       sale_belongs_to_org: { Args: { p_sale_id: string }; Returns: boolean }
       set_primary_product_media: {
         Args: { p_media_id: string }
+        Returns: undefined
+      }
+      set_shipment_package_data: {
+        Args: {
+          p_package_breadth_cm: number
+          p_package_dead_weight_kg: number
+          p_package_height_cm: number
+          p_package_length_cm: number
+          p_shipment_id: string
+        }
         Returns: undefined
       }
       store_belongs_to_org: { Args: { p_store_id: string }; Returns: boolean }
@@ -4128,12 +4254,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4157,11 +4283,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4182,11 +4308,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4207,11 +4333,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4224,11 +4350,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4319,4 +4445,3 @@ export const Constants = {
     },
   },
 } as const
-

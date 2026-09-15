@@ -38,6 +38,32 @@ export default async function OrderDetailPage({ params }: { params: { id: string
     .eq("online_order_id", order.id)
     .maybeSingle();
 
+  // package_* columns are deliberately not selectable directly (see
+  // migration 0029's column-grant narrowing) — read via the SECURITY
+  // DEFINER accessor instead, same staff-authorization shape as every
+  // other shipment RPC.
+  let packageData: { deadWeightKg: number; lengthCm: number; breadthCm: number; heightCm: number } | null = null;
+  if (shipment) {
+    const { data: pkgRows } = await supabase.rpc("get_shipment_package_data", {
+      p_shipment_id: shipment.id,
+    });
+    const pkg = pkgRows?.[0];
+    if (
+      pkg &&
+      pkg.package_dead_weight_kg !== null &&
+      pkg.package_length_cm !== null &&
+      pkg.package_breadth_cm !== null &&
+      pkg.package_height_cm !== null
+    ) {
+      packageData = {
+        deadWeightKg: pkg.package_dead_weight_kg,
+        lengthCm: pkg.package_length_cm,
+        breadthCm: pkg.package_breadth_cm,
+        heightCm: pkg.package_height_cm,
+      };
+    }
+  }
+
   const needsStorePicker = order.status === "CONFIRMED" && !order.fulfillment_store_id;
   const { data: stores } = needsStorePicker
     ? await supabase
@@ -171,6 +197,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           status={order.status}
           hasStore={Boolean(order.fulfillment_store_id)}
           shipment={shipment ?? null}
+          packageData={packageData}
           stores={stores ?? []}
         />
       </section>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { AlertTriangle } from "lucide-react";
 import {
   primaryButtonClass,
@@ -14,6 +14,7 @@ import {
   advanceOrderStatus,
   resolveStalledOrder,
   createShipment,
+  getEstimatedPackageWeight,
   reconcileShipmentAttempt,
   recordShipmentResult,
   markShipmentDelivered,
@@ -27,6 +28,13 @@ type Shipment = {
   last_error: string | null;
   attempt_count: number;
   last_tracking_status: string | null;
+} | null;
+
+type PackageData = {
+  deadWeightKg: number;
+  lengthCm: number;
+  breadthCm: number;
+  heightCm: number;
 } | null;
 
 // One panel per order/shipment state. Every branch mirrors exactly one
@@ -48,6 +56,7 @@ export function OrderActions({
   status,
   hasStore,
   shipment,
+  packageData,
   stores,
 }: {
   orderId: string;
@@ -55,6 +64,7 @@ export function OrderActions({
   status: string;
   hasStore: boolean;
   shipment: Shipment;
+  packageData: PackageData;
   stores: { id: string; store_code: string; store_name: string }[];
 }) {
   const [pending, startTransition] = useTransition();
@@ -68,6 +78,32 @@ export function OrderActions({
   const [providerOrderId, setProviderOrderId] = useState("");
   const [providerShipmentId, setProviderShipmentId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Package-data capture (Phase 5A-2 package-data architecture): shown only
+  // the first time a shipment is created for this order — once
+  // packageData exists on the shipment row, retries reuse it and this form
+  // never reappears (see the PACKED-branch logic below).
+  const needsPackageForm = status === "PACKED" && !packageData && (!shipment || shipment.status === "FAILED" || shipment.status === "PENDING");
+  const [weightInput, setWeightInput] = useState("");
+  const [lengthInput, setLengthInput] = useState("");
+  const [breadthInput, setBreadthInput] = useState("");
+  const [heightInput, setHeightInput] = useState("");
+  const [weightIsEstimate, setWeightIsEstimate] = useState(false);
+
+  useEffect(() => {
+    if (!needsPackageForm) return;
+    let cancelled = false;
+    getEstimatedPackageWeight(orderId).then((result) => {
+      if (cancelled || !result.ok) return;
+      setWeightInput(String(result.weightKg));
+      setWeightIsEstimate(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // Only ever fetch once, when the form first becomes relevant.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsPackageForm, orderId]);
 
   function run(action: () => Promise<{ error: string | null }>) {
     setError(null);
@@ -93,6 +129,26 @@ export function OrderActions({
     });
   }
 
+  function runCreateShipmentWithPackageData() {
+    setError(null);
+    setInfo(null);
+    startTransition(async () => {
+      const result = await createShipment(orderId, {
+        deadWeightKg: weightInput,
+        lengthCm: lengthInput,
+        breadthCm: breadthInput,
+        heightCm: heightInput,
+      });
+      if (result.outcome === "error" || result.outcome === "failed") {
+        setError(result.error);
+      } else if (result.outcome === "uncertain") {
+        setInfo(
+          "Shiprocket did not respond before this request timed out. The outcome is unknown — use \"Check with Shiprocket\" below before retrying.",
+        );
+      }
+    });
+  }
+
   function runReconcile() {
     setError(null);
     setInfo(null);
@@ -103,11 +159,79 @@ export function OrderActions({
         setError(result.error);
       } else if (result.outcome === "found_created") {
         setInfo("Shiprocket confirms this shipment was created. Recorded.");
+      } else if (result.outcome === "unknown") {
+        setInfo(
+          `Shiprocket's response could not be understood — this needs manual reconciliation before any retry (${result.reason}). The shipment has NOT been changed.`,
+        );
       } else {
         setInfo("Shiprocket has no record of this order. It is now safe to retry.");
       }
     });
   }
+
+  const packageFormPanel = (onSubmit: () => void, submitLabel: string) => (
+    <div className="space-y-3 rounded-lg border border-kantira-navy-100 bg-kantira-navy-50/40 p-3">
+      <p className="text-sm font-medium text-kantira-navy-900">
+        Actual packed parcel — required before Shiprocket is contacted
+      </p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div>
+          <label className={labelClass}>Dead weight (kg){weightIsEstimate ? " — estimated, confirm or override" : ""}</label>
+          <input
+            type="number"
+            step="0.001"
+            min="0"
+            value={weightInput}
+            onChange={(e) => {
+              setWeightInput(e.target.value);
+              setWeightIsEstimate(false);
+            }}
+            className={inputClass}
+            placeholder="Weigh the packed parcel"
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Length (cm)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={lengthInput}
+            onChange={(e) => setLengthInput(e.target.value)}
+            className={inputClass}
+            placeholder="Measure the packed parcel"
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Breadth (cm)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={breadthInput}
+            onChange={(e) => setBreadthInput(e.target.value)}
+            className={inputClass}
+            placeholder="Measure the packed parcel"
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Height (cm)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={heightInput}
+            onChange={(e) => setHeightInput(e.target.value)}
+            className={inputClass}
+            placeholder="Measure the packed parcel"
+          />
+        </div>
+      </div>
+      <button type="button" onClick={onSubmit} disabled={pending} className={primaryButtonClass}>
+        {pending ? "Contacting Shiprocket…" : submitLabel}
+      </button>
+    </div>
+  );
 
   const manualOverridePanel = (shipmentId: string) => (
     <div className="mt-3 border-t border-amber-200 pt-3">
@@ -301,14 +425,24 @@ export function OrderActions({
           {shipment?.status === "FAILED" && shipment.last_error ? (
             <p className={errorTextClass}>Last attempt failed: {shipment.last_error}</p>
           ) : null}
-          <button
-            type="button"
-            onClick={runCreateShipment}
-            disabled={pending}
-            className={primaryButtonClass}
-          >
-            {pending ? "Contacting Shiprocket…" : shipment ? "Retry shipment" : "Create shipment"}
-          </button>
+          {packageData ? (
+            <p className="text-sm text-brand-slate">
+              Package on file: {packageData.deadWeightKg}kg, {packageData.lengthCm}×
+              {packageData.breadthCm}×{packageData.heightCm}cm — reused for this retry.
+            </p>
+          ) : null}
+          {needsPackageForm ? (
+            packageFormPanel(runCreateShipmentWithPackageData, shipment ? "Retry shipment" : "Create shipment")
+          ) : (
+            <button
+              type="button"
+              onClick={runCreateShipment}
+              disabled={pending}
+              className={primaryButtonClass}
+            >
+              {pending ? "Contacting Shiprocket…" : "Retry shipment"}
+            </button>
+          )}
           {error ? <p className={errorTextClass}>{error}</p> : null}
           {info ? <p className="text-sm text-brand-slate">{info}</p> : null}
           {shipment ? manualOverridePanel(shipment.id) : null}
@@ -319,14 +453,18 @@ export function OrderActions({
     if (shipment.status === "PENDING") {
       return (
         <div className="space-y-2">
-          <button
-            type="button"
-            onClick={runCreateShipment}
-            disabled={pending}
-            className={primaryButtonClass}
-          >
-            {pending ? "Contacting Shiprocket…" : "Create shipment"}
-          </button>
+          {needsPackageForm ? (
+            packageFormPanel(runCreateShipmentWithPackageData, "Create shipment")
+          ) : (
+            <button
+              type="button"
+              onClick={runCreateShipment}
+              disabled={pending}
+              className={primaryButtonClass}
+            >
+              {pending ? "Contacting Shiprocket…" : "Create shipment"}
+            </button>
+          )}
           {error ? <p className={errorTextClass}>{error}</p> : null}
           {manualOverridePanel(shipment.id)}
         </div>

@@ -157,10 +157,17 @@ export async function assignAwb(providerShipmentId: string): Promise<AssignAwbRe
 // Reconciliation lookup — the LEAST certain endpoint in this file. Public
 // Shiprocket docs describe filtering the order-listing endpoint by
 // channel order id; the exact query param name and response envelope have
-// not been confirmed live. Treat any non-obvious response shape as "not
-// found" rather than guessing — a false "not found" only means a human
-// falls back to manual reconciliation (safe), whereas a false match could
-// wrongly mark an order provider-created (unsafe).
+// not been confirmed live.
+//
+// Three-way result, deliberately (see types.ts's OrderLookupResult header):
+// a well-formed response body whose `data` array simply has no matching
+// row is a genuine "not_found". A response whose shape cannot be
+// recognized at all — `data` missing/not an array, or a matching row
+// missing the `id` needed to trust it — is "unknown", NEVER collapsed into
+// "not_found". The two must never be conflated: a false "not_found" can
+// let a human retry into creating a second, real, duplicate Shiprocket
+// order, which is a materially worse outcome than an "unknown" that just
+// requires a manual check.
 export async function getOrderByChannelId(channelOrderId: string): Promise<OrderLookupResult> {
   let json: unknown;
   try {
@@ -183,18 +190,30 @@ export async function getOrderByChannelId(channelOrderId: string): Promise<Order
     }>;
   } | null;
 
-  const match = Array.isArray(body?.data)
-    ? body!.data.find((row) => String(row.channel_order_id) === channelOrderId)
-    : undefined;
+  if (!body || !Array.isArray(body.data)) {
+    return {
+      status: "unknown",
+      reason: "Shiprocket's order-lookup response did not contain the expected data array.",
+    };
+  }
 
-  if (!match || match.id === undefined) {
-    return { found: false };
+  const match = body.data.find((row) => String(row.channel_order_id) === channelOrderId);
+
+  if (!match) {
+    return { status: "not_found" };
+  }
+
+  if (match.id === undefined) {
+    return {
+      status: "unknown",
+      reason: "Shiprocket returned a matching order with no usable id.",
+    };
   }
 
   const shipment = Array.isArray(match.shipments) ? match.shipments[0] : undefined;
 
   return {
-    found: true,
+    status: "found",
     providerOrderId: String(match.id),
     providerShipmentId: shipment?.id !== undefined ? String(shipment.id) : null,
     providerStatus: match.status ?? shipment?.status ?? null,
