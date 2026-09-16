@@ -1,10 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  getCheckoutShippingQuoteCore,
-  validateInput,
-  type CheckoutShippingQuoteInput,
-} from "./actions";
+import { getCheckoutShippingQuoteCore, type CheckoutShippingQuoteInput } from "./actions";
+import { validateInput } from "./validation";
 import { calculateTotalShipmentWeightKg } from "@/lib/shipping/weight";
 import { ShiprocketError } from "@/lib/shiprocket/errors";
 import type { ShippingQuoteResult } from "@/lib/shiprocket/types";

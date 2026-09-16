@@ -5,6 +5,7 @@ import { calculateTotalShipmentWeightKg } from "@/lib/shipping/weight";
 import { resolveFulfillmentStore, resolveActivePickupMapping } from "@/lib/shipping/fulfillment";
 import { getShippingQuote } from "@/lib/shiprocket/serviceability";
 import { ShiprocketError, toSafeClientMessage } from "@/lib/shiprocket/errors";
+import { validateInput } from "./validation";
 
 // Customer-facing checkout shipping quote. Unlike every other action in
 // this codebase (all internal-staff CRUD forms bound to useFormState /
@@ -30,7 +31,6 @@ import { ShiprocketError, toSafeClientMessage } from "@/lib/shiprocket/errors";
 // below, which always uses the real dependencies.
 
 const PINCODE_RE = /^[1-9][0-9]{5}$/;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type CartLineInput = { itemId: string; quantity: number };
 
@@ -60,23 +60,6 @@ export type CheckoutShippingOption = {
 export type CheckoutShippingQuoteResult =
   | { ok: true; recommendedCourierId: number | null; options: CheckoutShippingOption[] }
   | { ok: false; error: string };
-
-export function validateInput(input: CheckoutShippingQuoteInput): string | null {
-  if (!UUID_RE.test(input.addressId)) return "Invalid delivery address.";
-  if (input.paymentMethod !== "PREPAID" && input.paymentMethod !== "COD") {
-    return "Invalid payment method.";
-  }
-  if (!Array.isArray(input.itemLines) || input.itemLines.length === 0) {
-    return "Your cart is empty.";
-  }
-  for (const line of input.itemLines) {
-    if (!UUID_RE.test(line.itemId)) return "Invalid item in cart.";
-    if (!Number.isInteger(line.quantity) || line.quantity <= 0) {
-      return "Invalid quantity in cart.";
-    }
-  }
-  return null;
-}
 
 type CustomerSupabaseClient = NonNullable<
   Awaited<ReturnType<typeof requireCustomerContext>>["supabase"]

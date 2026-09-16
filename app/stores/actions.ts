@@ -3,35 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireOrgContext } from "@/lib/actions/auth";
+import { readStoreFields, validate, type StoreType } from "./validation";
 
 type ActionState = { error: string | null };
 
 // Mirrors stores_insert_admin / stores_update_admin RLS (0001_phase1_foundation.sql).
 const STORE_WRITE_ROLES = ["OWNER", "ADMIN"] as const;
-
-export function readStoreFields(formData: FormData) {
-  return {
-    store_code: String(formData.get("store_code") ?? "").trim(),
-    store_name: String(formData.get("store_name") ?? "").trim(),
-    type: String(formData.get("type") ?? "COMPANY").trim(),
-    phone: String(formData.get("phone") ?? "").trim(),
-    city: String(formData.get("city") ?? "").trim(),
-    address: String(formData.get("address") ?? "").trim(),
-  };
-}
-
-type StoreType = "COMPANY" | "FRANCHISE";
-
-function isStoreType(value: string): value is StoreType {
-  return value === "COMPANY" || value === "FRANCHISE";
-}
-
-export function validate(fields: ReturnType<typeof readStoreFields>): string | null {
-  if (!fields.store_code) return "Store code is required.";
-  if (!fields.store_name) return "Store name is required.";
-  if (!isStoreType(fields.type)) return "Invalid store type.";
-  return null;
-}
 
 export async function createStore(
   _prevState: ActionState,

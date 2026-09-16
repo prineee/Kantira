@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { handleRazorpayWebhookCore, type WebhookDeps } from "./route";
+import { handleRazorpayWebhookCore, type WebhookDeps } from "@/lib/razorpay/webhook";
 import type { RazorpayPayment } from "@/lib/razorpay/client";
 
 const SECRET = "whsec_test";

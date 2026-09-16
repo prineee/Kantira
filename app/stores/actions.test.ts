@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readStoreFields, validate } from "./actions";
+import { readStoreFields, validate } from "./validation";
 
 function formData(fields: Record<string, string>): FormData {
   const fd = new FormData();
