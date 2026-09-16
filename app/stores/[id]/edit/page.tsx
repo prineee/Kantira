@@ -45,6 +45,14 @@ export default async function StoreDetailPage({
         <h2 className="mt-2 text-xl font-bold text-kantira-navy-900">
           {store.store_name}
         </h2>
+        {canWrite ? (
+          <Link
+            href={`/stores/${store.id}/shipping`}
+            className="mt-1 inline-block text-sm font-medium text-brand-royal"
+          >
+            Manage Shiprocket pickup mapping →
+          </Link>
+        ) : null}
       </div>
 
       <section className={cardClass}>

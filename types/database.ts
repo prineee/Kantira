@@ -4162,6 +4162,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_store_pickup_mapping: {
+        Args: {
+          p_provider_location_id: string
+          p_provider_location_name: string
+          p_store_id: string
+        }
+        Returns: undefined
+      }
       store_belongs_to_org: { Args: { p_store_id: string }; Returns: boolean }
       supplier_belongs_to_org: {
         Args: { p_supplier_id: string }
