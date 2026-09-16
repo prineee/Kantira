@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { handleShiprocketWebhookCore, type ShiprocketWebhookDeps } from "./route";
+import { handleShiprocketWebhookCore, type ShiprocketWebhookDeps } from "@/lib/shiprocket/webhook";
 
 const SECRET = "whsec_shiprocket_test";
 
@@ -112,4 +112,9 @@ test("builds a stable idempotency key from event type + awb + timestamp when no 
   const body = JSON.stringify({ awb: "AWB123", current_status: "DELIVERED", current_timestamp: "2026-09-14T10:00:00Z" });
   await handleShiprocketWebhookCore(body, SECRET, deps);
   assert.equal(rpcCalls[0]!.args.p_provider_event_id, "DELIVERED:AWB123:2026-09-14T10:00:00Z");
+});
+
+test("route module exports only the POST route handler, never the reusable webhook core (the export shape that broke the Vercel build)", async () => {
+  const routeModule = await import("./route");
+  assert.deepEqual(Object.keys(routeModule), ["POST"]);
 });
