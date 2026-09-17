@@ -88,7 +88,7 @@ begin
     btrim(p_provider_location_name),
     true
   )
-  on conflict on constraint store_shipping_config_org_store_key
+  on conflict (organization_id, store_id)
   do update set
     provider_location_id = excluded.provider_location_id,
     provider_location_name = excluded.provider_location_name,
