@@ -759,7 +759,7 @@ export type Database = {
           auth_user_id: string | null
           billing_address: string | null
           created_at: string
-          created_by: string
+          created_by: string | null
           customer_code: string
           email: string | null
           gstin: string | null
@@ -774,7 +774,7 @@ export type Database = {
           auth_user_id?: string | null
           billing_address?: string | null
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           customer_code: string
           email?: string | null
           gstin?: string | null
@@ -789,7 +789,7 @@ export type Database = {
           auth_user_id?: string | null
           billing_address?: string | null
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           customer_code?: string
           email?: string | null
           gstin?: string | null
@@ -3827,6 +3827,13 @@ export type Database = {
           p_store_id: string
         }
         Returns: string
+      }
+      create_customer_self: {
+        Args: { p_name: string; p_phone?: string }
+        Returns: {
+          out_created: boolean
+          out_customer_id: string
+        }[]
       }
       create_journal_entry: {
         Args: {

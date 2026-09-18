@@ -1,7 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
-import { isApiRoute, isPublicStorefrontPath } from "@/lib/auth/public-routes";
+import {
+  isApiRoute,
+  isCustomerAuthPath,
+  isCustomerProtectedPath,
+  isPublicStorefrontPath,
+  isStaffAuthPath,
+} from "@/lib/auth/public-routes";
 
 /**
  * Refreshes the Supabase auth session on every request and redirects
@@ -37,10 +43,17 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isAuthRoute =
-    request.nextUrl.pathname.startsWith("/login") ||
-    request.nextUrl.pathname.startsWith("/signup") ||
-    request.nextUrl.pathname.startsWith("/auth");
+  const pathname = request.nextUrl.pathname;
+
+  const isStaffAuthRoute = isStaffAuthPath(pathname);
+
+  // Phase 6B-12: the customer-facing counterpart to isStaffAuthRoute —
+  // /customer/login, /customer/signup. Kept as a fully separate check
+  // (never merged into isStaffAuthRoute) so the two redirect targets below
+  // can never cross: a customer auth route redirects an authenticated
+  // visitor to /account, a staff auth route to /dashboard, and neither
+  // ever substitutes for the other.
+  const isCustomerAuthRoute = isCustomerAuthPath(pathname);
 
   // Public storefront routes (Phase 4A): logged-out shoppers must be able
   // to browse the catalog. This never relaxes data access on its own — the
@@ -48,9 +61,7 @@ export async function updateSession(request: NextRequest) {
   // policies (items_select_public, product_categories_select_public, etc.)
   // either way; this only stops middleware from bouncing an anonymous
   // visitor to /login before the page ever renders.
-  const isPublicStorefrontRoute = isPublicStorefrontPath(
-    request.nextUrl.pathname,
-  );
+  const isPublicStorefrontRoute = isPublicStorefrontPath(pathname);
 
   // API Route Handlers (app/api/**) own their own authorization (a
   // signature check for a webhook, requireCustomerContext() equivalent for
@@ -58,23 +69,32 @@ export async function updateSession(request: NextRequest) {
   // Phase 4D added the first one: app/api/webhooks/razorpay/route.ts,
   // which has no Supabase session at all and would otherwise be redirected
   // to /login on every request, breaking the webhook entirely.
-  if (isApiRoute(request.nextUrl.pathname)) {
+  if (isApiRoute(pathname)) {
     return supabaseResponse;
   }
 
-  if (!user && !isAuthRoute && !isPublicStorefrontRoute) {
+  if (!user && !isStaffAuthRoute && !isCustomerAuthRoute && !isPublicStorefrontRoute) {
+    // Phase 6B-12: a customer-area page (/account, /cart, /checkout) sends
+    // an unauthenticated visitor to the customer login, not the staff one
+    // — everything else (every internal Business OS route) keeps this
+    // app's existing default of /login unchanged. This is UX routing only;
+    // the actual authorization boundary remains
+    // requireOrgContext()/requireCustomerContext()/RLS on the destination
+    // page itself, exactly as before this phase.
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = isCustomerProtectedPath(pathname) ? "/customer/login" : "/login";
     return NextResponse.redirect(url);
   }
 
-  if (
-    user &&
-    (request.nextUrl.pathname.startsWith("/login") ||
-      request.nextUrl.pathname.startsWith("/signup"))
-  ) {
+  if (user && isStaffAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+
+  if (user && isCustomerAuthRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/account";
     return NextResponse.redirect(url);
   }
 

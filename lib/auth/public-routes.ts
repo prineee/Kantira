@@ -23,6 +23,40 @@ export function isPublicStorefrontPath(pathname: string): boolean {
   );
 }
 
+// Phase 6B-12: the customer-facing auth routes, kept structurally separate
+// from the staff /login+/signup pair (see isStaffAuthPath below) so an
+// authenticated-user redirect never sends a customer toward /dashboard nor
+// a staff member toward /account merely for hitting the "wrong" auth route
+// — each pair only ever redirects within its own kind.
+const CUSTOMER_AUTH_PATH_PREFIXES = ["/customer/login", "/customer/signup"] as const;
+
+export function isCustomerAuthPath(pathname: string): boolean {
+  return CUSTOMER_AUTH_PATH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+export function isStaffAuthPath(pathname: string): boolean {
+  return (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/auth")
+  );
+}
+
+// Customer-area pages that require a customer session. An unauthenticated
+// visitor here is sent to /customer/login, never the generic staff /login
+// — everything else non-public/non-auth still falls back to /login
+// unchanged, matching this app's existing default for every internal
+// Business OS route.
+const CUSTOMER_PROTECTED_PATH_PREFIXES = ["/account", "/cart", "/checkout"] as const;
+
+export function isCustomerProtectedPath(pathname: string): boolean {
+  return CUSTOMER_PROTECTED_PATH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 // API Route Handlers (app/api/**) are a different kind of route entirely —
 // they serve JSON/HTTP responses, never HTML pages, and this codebase's
 // page-navigation-style "no session -> redirect to /login" behavior makes

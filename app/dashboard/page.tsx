@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { LogOut, Store as StoreIcon, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resolveIdentity } from "@/lib/auth/resolve-identity";
+import { bootstrapCustomerIdentity } from "@/lib/actions/customer-auth";
 import { signOut } from "./actions";
 
 export default async function DashboardPage() {
@@ -51,6 +52,26 @@ export default async function DashboardPage() {
     // "no organization found" message below. Customer identity is
     // architecturally separate from staff profiles (0009); a customer must
     // never be routed into the internal Business OS.
+    //
+    // Phase 6B-12: deferred-email-confirmation completion of
+    // /customer/signup. The immediate-session path (this project's current
+    // configuration) already bootstraps inline in customerSignUp() and
+    // never reaches here — this only fires the first time a customer whose
+    // project required email confirmation returns after confirming and
+    // lands here via /auth/callback's unconditional /dashboard redirect,
+    // mirroring the pendingOrgName bootstrap immediately above exactly.
+    const pendingCustomerName = (
+      user.user_metadata as { pending_customer_name?: string; pending_customer_phone?: string }
+    )?.pending_customer_name;
+
+    if (pendingCustomerName) {
+      await bootstrapCustomerIdentity(supabase, {
+        name: pendingCustomerName,
+        phone: (user.user_metadata as { pending_customer_phone?: string })
+          ?.pending_customer_phone,
+      });
+    }
+
     const identity = await resolveIdentity();
     if (identity.kind === "customer") {
       redirect("/account");
