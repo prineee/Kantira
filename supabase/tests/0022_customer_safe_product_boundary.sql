@@ -66,8 +66,11 @@ values ('99999999-9999-9999-9999-999999999905', '99999999-9999-9999-9999-9999999
 insert into public.units_of_measurement (id, organization_id, code, name)
 values ('99999999-9999-9999-9999-999999999910', '99999999-9999-9999-9999-999999999909', 'PCS', 'Pieces');
 
-insert into public.items (id, organization_id, uom_id, sku, name, cost_price, selling_price, is_active, created_by)
-values ('99999999-9999-9999-9999-999999999906', '99999999-9999-9999-9999-999999999901', '99999999-9999-9999-9999-999999999905', 'SEC-TEST-SKU', 'Sec Test Item', 123.45, 199.00, true, '99999999-9999-9999-9999-999999999902');
+-- Phase 6B-15B (migration 0032): public visibility now also requires
+-- is_published = true, so this storefront-visible fixture item is
+-- explicitly published (the new column defaults to false).
+insert into public.items (id, organization_id, uom_id, sku, name, cost_price, selling_price, is_active, is_published, created_by)
+values ('99999999-9999-9999-9999-999999999906', '99999999-9999-9999-9999-999999999901', '99999999-9999-9999-9999-999999999905', 'SEC-TEST-SKU', 'Sec Test Item', 123.45, 199.00, true, true, '99999999-9999-9999-9999-999999999902');
 
 insert into public.items (id, organization_id, uom_id, sku, name, cost_price, selling_price, is_active, created_by)
 values ('99999999-9999-9999-9999-999999999911', '99999999-9999-9999-9999-999999999909', '99999999-9999-9999-9999-999999999910', 'OTHER-ORG-SKU', 'Other Org Item', 777.77, 999.00, true, '99999999-9999-9999-9999-999999999908');

@@ -15,9 +15,20 @@ import {
   Receipt,
   Store,
   PackageSearch,
+  Globe,
 } from "lucide-react";
+import { STOREFRONT_VIEW_ROLES } from "@/lib/storefront/permissions";
 
-const NAV_ITEMS = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  // Optional role gate (display only — each page and the database enforce
+  // access independently).
+  roles?: readonly string[];
+};
+
+const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/stores", label: "Stores", icon: Store },
   { href: "/items", label: "Items", icon: Package },
@@ -28,6 +39,7 @@ const NAV_ITEMS = [
   { href: "/orders", label: "Online orders", icon: PackageSearch },
   { href: "/accounts", label: "Accounts", icon: BookOpenText },
   { href: "/stock", label: "Stock", icon: Boxes },
+  { href: "/storefront", label: "Storefront", icon: Globe, roles: STOREFRONT_VIEW_ROLES },
 ];
 
 export function KantiraShell({
@@ -80,7 +92,7 @@ export function KantiraShell({
           </div>
         </div>
         <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-6">
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role)).map((item) => {
             const active =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;

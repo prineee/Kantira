@@ -6,6 +6,7 @@ import { signOut } from "@/app/dashboard/actions";
 import { updateItem } from "../../actions";
 import { ItemForm } from "../../item-form";
 import { cardClass } from "@/lib/ui/form-classes";
+import { canPublishItems } from "@/lib/storefront/permissions";
 
 const WRITE_ROLES = ["OWNER", "ADMIN", "STOCK"];
 
@@ -26,7 +27,7 @@ export default async function EditItemPage({
       supabase
         .rpc("items_catalog_for_staff")
         .select(
-          "id, sku, name, category_id, uom_id, barcode, hsn_code, description, cost_price, selling_price, tax_rate_percent, reorder_level, weight_kg, track_inventory, is_active",
+          "id, sku, name, category_id, uom_id, barcode, hsn_code, description, cost_price, selling_price, tax_rate_percent, reorder_level, weight_kg, track_inventory, is_active, is_published",
         )
         .eq("id", params.id)
         .maybeSingle(),
@@ -85,6 +86,7 @@ export default async function EditItemPage({
             action={updateItem.bind(null, item.id ?? params.id)}
             categories={categoryOptions}
             units={unitOptions}
+            canPublish={canPublishItems(profile.role)}
             initial={{
               sku: item.sku ?? "",
               name: item.name ?? "",
@@ -100,6 +102,7 @@ export default async function EditItemPage({
               weight_kg: item.weight_kg,
               track_inventory: item.track_inventory ?? true,
               is_active: item.is_active ?? true,
+              is_published: item.is_published ?? false,
             }}
           />
         ) : (

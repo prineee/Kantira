@@ -29,11 +29,15 @@ export function ItemForm({
   units,
   initial,
   mode,
+  canPublish = false,
 }: {
   action: Action;
   categories: Option[];
   units: Option[];
   mode: "create" | "edit";
+  // OWNER/ADMIN only (lib/storefront/permissions.ts); the database enforces
+  // the same rule independently (migration 0032).
+  canPublish?: boolean;
   initial?: {
     sku: string;
     name: string;
@@ -49,6 +53,7 @@ export function ItemForm({
     weight_kg: number | null;
     track_inventory: boolean;
     is_active: boolean;
+    is_published: boolean;
   };
 }) {
   const [state, formAction] = useFormState<ActionState, FormData>(action, {
@@ -215,6 +220,36 @@ export function ItemForm({
           </label>
         ) : null}
       </div>
+
+      {mode === "edit" ? (
+        <div className="rounded-lg border border-kantira-navy-100 bg-brand-gray p-4">
+          <label className={labelClass} htmlFor="is_published">
+            Storefront
+          </label>
+          {canPublish ? (
+            <select
+              id="is_published"
+              name="is_published"
+              defaultValue={initial?.is_published ? "published" : "hidden"}
+              className={`${inputClass} sm:max-w-xs`}
+            >
+              <option value="hidden">Hidden</option>
+              <option value="published">Published</option>
+            </select>
+          ) : (
+            <p className="text-sm font-medium text-kantira-navy-900">
+              {initial?.is_published ? "Published" : "Hidden"}
+              <span className="ml-2 font-normal text-brand-slate">
+                (only an owner or admin can change this)
+              </span>
+            </p>
+          )}
+          <p className="mt-2 text-xs text-brand-slate">
+            Customers see this item at kantira.in only when it is Active and Published and
+            the storefront is ON.
+          </p>
+        </div>
+      ) : null}
 
       {state.error ? <p className={errorTextClass}>{state.error}</p> : null}
 

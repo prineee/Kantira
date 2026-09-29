@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Pencil } from "lucide-react";
+import { Pencil, ImageIcon } from "lucide-react";
 import { getOrgContext } from "@/lib/data/get-org-id";
 import { KantiraShell } from "@/components/kantira-shell";
 import { signOut } from "@/app/dashboard/actions";
@@ -9,7 +9,14 @@ import {
   cardClass,
   badgeActiveClass,
   badgeInactiveClass,
+  badgeDraftClass,
 } from "@/lib/ui/form-classes";
+import {
+  ITEM_STOREFRONT_STATUS_LABEL,
+  countImagesByItem,
+  isVisibleToCustomers,
+  itemStorefrontStatus,
+} from "@/lib/storefront/visibility";
 
 const WRITE_ROLES = ["OWNER", "ADMIN", "STOCK"];
 
@@ -17,8 +24,13 @@ export default async function ItemsPage() {
   const { supabase, profile, organization } = await getOrgContext();
   const canWrite = WRITE_ROLES.includes(profile.role);
 
-  const [{ data: items }, { data: categories }, { data: units }] =
-    await Promise.all([
+  const [
+    { data: items },
+    { data: categories },
+    { data: units },
+    { data: mediaRows },
+    { data: storefrontOrg },
+  ] = await Promise.all([
       // items_catalog_for_staff() (not the items table directly): a
       // SECURITY DEFINER RPC scoped to the caller's own organization,
       // returning cost_price only to an authenticated staff member — see
@@ -28,7 +40,7 @@ export default async function ItemsPage() {
       supabase
         .rpc("items_catalog_for_staff")
         .select(
-          "id, sku, name, barcode, cost_price, selling_price, tax_rate_percent, reorder_level, track_inventory, is_active, category_id, uom_id",
+          "id, sku, name, barcode, cost_price, selling_price, tax_rate_percent, reorder_level, track_inventory, is_active, is_published, category_id, uom_id",
         )
         .order("name"),
       supabase
@@ -41,6 +53,14 @@ export default async function ItemsPage() {
         .select("id, code, name")
         .eq("is_active", true)
         .order("code"),
+      // One org-scoped query (product_media_select_staff RLS) for every
+      // item's image count — never one query per row.
+      supabase.from("product_media").select("item_id"),
+      supabase
+        .from("organizations")
+        .select("is_public_storefront")
+        .eq("id", profile.organization_id)
+        .maybeSingle(),
     ]);
 
   const categoryOptions = (categories ?? []).map((c) => ({
@@ -53,6 +73,15 @@ export default async function ItemsPage() {
   }));
   const categoryNameById = new Map((categories ?? []).map((c) => [c.id, c.name]));
   const unitCodeById = new Map((units ?? []).map((u) => [u.id, u.code]));
+  const imageCountByItem = countImagesByItem(mediaRows ?? []);
+  const storefrontEnabled = storefrontOrg?.is_public_storefront === true;
+  const visibleCount = (items ?? []).filter((item) =>
+    isVisibleToCustomers({
+      storefrontEnabled,
+      isActive: item.is_active,
+      isPublished: item.is_published,
+    }),
+  ).length;
 
   return (
     <KantiraShell
@@ -65,6 +94,14 @@ export default async function ItemsPage() {
           <h2 className="text-xl font-bold text-kantira-navy-900">Items</h2>
           <p className="text-sm text-brand-slate">
             Product master data used across purchases, sales, and stock.
+          </p>
+          <p className="mt-1 text-sm text-kantira-navy-700">
+            {storefrontEnabled
+              ? `${visibleCount} product${visibleCount === 1 ? "" : "s"} currently visible to customers at kantira.in.`
+              : "Storefront is OFF — no products are visible to customers."}{" "}
+            <Link href="/storefront" className="font-medium text-brand-royal">
+              Storefront →
+            </Link>
           </p>
         </div>
         <Link
@@ -105,7 +142,7 @@ export default async function ItemsPage() {
         </h3>
         {items && items.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
+            <table className="w-full min-w-[900px] text-left text-sm">
               <thead>
                 <tr className="border-b border-kantira-navy-100 text-xs uppercase tracking-wide text-brand-slate">
                   <th className="py-2 pr-4">SKU</th>
@@ -116,6 +153,8 @@ export default async function ItemsPage() {
                   <th className="py-2 pr-4 text-right">Selling</th>
                   <th className="py-2 pr-4 text-right">Tax %</th>
                   <th className="py-2 pr-4">Status</th>
+                  <th className="py-2 pr-4">Storefront</th>
+                  <th className="py-2 pr-4">Images</th>
                   {canWrite ? <th className="py-2 pr-4" /> : null}
                 </tr>
               </thead>
@@ -151,6 +190,36 @@ export default async function ItemsPage() {
                       >
                         {item.is_active ? "Active" : "Inactive"}
                       </span>
+                    </td>
+                    <td className="py-2.5 pr-4">
+                      {(() => {
+                        const status = itemStorefrontStatus(item);
+                        return (
+                          <span
+                            className={
+                              status === "PUBLISHED"
+                                ? badgeActiveClass
+                                : status === "PUBLISHED_INACTIVE"
+                                  ? badgeDraftClass
+                                  : badgeInactiveClass
+                            }
+                          >
+                            {ITEM_STOREFRONT_STATUS_LABEL[status]}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                    <td className="py-2.5 pr-4">
+                      <Link
+                        href={`/items/${item.id}/media`}
+                        className="inline-flex items-center gap-1 text-brand-royal"
+                      >
+                        <ImageIcon size={14} />
+                        {(() => {
+                          const count = (item.id && imageCountByItem.get(item.id)) || 0;
+                          return count > 0 ? `${count} image${count === 1 ? "" : "s"}` : "No image";
+                        })()}
+                      </Link>
                     </td>
                     {canWrite ? (
                       <td className="py-2.5 pr-4">

@@ -87,6 +87,12 @@ const EMPTY_PAGE: StorefrontItemsPage = {
   totalCount: 0,
 };
 
+// Public visibility (migration 0032): organization is the storefront AND
+// item is active AND item is published. RLS (items_select_public) enforces
+// all three; the explicit is_active/is_published filters below are defense
+// in depth and keep each query self-describing. Stock is intentionally not
+// a visibility filter — checkout validates stock.
+//
 // Basic database-backed search/browse for the Phase 4A catalog foundation.
 // A search term is matched against name/sku/description directly, plus
 // category name indirectly (matching categories first, then their items) —
@@ -122,7 +128,8 @@ export async function fetchStorefrontItemsPage(
     .from("items")
     .select(STOREFRONT_ITEM_SELECT, { count: "exact" })
     .eq("organization_id", organizationId)
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .eq("is_published", true);
 
   if (categoryId) {
     query = query.eq("category_id", categoryId);
@@ -168,6 +175,7 @@ async function fetchSearchResultsPage(
       .select(STOREFRONT_ITEM_SELECT)
       .eq("organization_id", organizationId)
       .eq("is_active", true)
+      .eq("is_published", true)
       .limit(SEARCH_MATCH_LIMIT);
 
   const queries = [
@@ -214,6 +222,7 @@ export async function getStorefrontItem(
     .eq("organization_id", organizationId)
     .eq("id", itemId)
     .eq("is_active", true)
+    .eq("is_published", true)
     .maybeSingle();
   return data ? mapItemRow(data as unknown as StorefrontItemRow) : null;
 }

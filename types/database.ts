@@ -955,6 +955,7 @@ export type Database = {
           hsn_code: string | null
           id: string
           is_active: boolean
+          is_published: boolean
           name: string
           organization_id: string
           reorder_level: number
@@ -976,6 +977,7 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           is_active?: boolean
+          is_published?: boolean
           name: string
           organization_id?: string
           reorder_level?: number
@@ -997,6 +999,7 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           is_active?: boolean
+          is_published?: boolean
           name?: string
           organization_id?: string
           reorder_level?: number
@@ -3986,6 +3989,7 @@ export type Database = {
           hsn_code: string
           id: string
           is_active: boolean
+          is_published: boolean
           name: string
           organization_id: string
           reorder_level: number
@@ -4176,6 +4180,10 @@ export type Database = {
           p_store_id: string
         }
         Returns: undefined
+      }
+      set_storefront_enabled: {
+        Args: { p_enabled: boolean }
+        Returns: boolean
       }
       store_belongs_to_org: { Args: { p_store_id: string }; Returns: boolean }
       supplier_belongs_to_org: {

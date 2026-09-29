@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireOrgContext } from "@/lib/actions/auth";
+import { canPublishItems } from "@/lib/storefront/permissions";
+import { PUBLISH_DENIED_MESSAGE, isPublishDeniedError, parsePublishField } from "./publish";
 
 type ActionState = { error: string | null };
 
@@ -135,6 +137,18 @@ export async function updateItem(
 
   const is_active = formData.get("is_active") === "on";
 
+  // Storefront publication (migration 0032). Only OWNER/ADMIN ever send it;
+  // for any other role the field is ignored here and, independently,
+  // rejected by the items_enforce_publish_authorization trigger if a
+  // changed value reaches the database by any other route.
+  const is_published = parsePublishField(formData);
+  if (is_published === null) {
+    return { error: "Invalid storefront visibility value." };
+  }
+  if (is_published !== undefined && !canPublishItems(profile.role)) {
+    return { error: PUBLISH_DENIED_MESSAGE };
+  }
+
   const { error } = await supabase
     .from("items")
     .update({
@@ -152,12 +166,16 @@ export async function updateItem(
       weight_kg: fields.weight_kg,
       track_inventory: fields.track_inventory,
       is_active,
+      ...(is_published === undefined ? {} : { is_published }),
     })
     .eq("id", id);
 
-  if (error) return { error: error.message };
+  if (error) {
+    return { error: isPublishDeniedError(error.message) ? PUBLISH_DENIED_MESSAGE : error.message };
+  }
 
   revalidatePath("/items");
   revalidatePath(`/items/${id}/edit`);
+  revalidatePath("/storefront");
   redirect("/items");
 }
