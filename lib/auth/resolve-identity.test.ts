@@ -4,6 +4,7 @@ import {
   resolveIdentityFrom,
   experienceHomeRoute,
   rootRedirectForIdentity,
+  storefrontAccountRoute,
   cartAffordanceForIdentity,
   type IdentitySupabaseClient,
 } from "./resolve-identity";
@@ -161,4 +162,33 @@ test("rootRedirectForIdentity: staff and unresolved leave / for /dashboard; cust
     null,
   );
   assert.equal(rootRedirectForIdentity({ kind: "unauthenticated" }), null);
+});
+
+test("storefrontAccountRoute: anonymous visitors go to customer sign-in; signed-in identities keep their home route", () => {
+  assert.equal(
+    storefrontAccountRoute({ kind: "unauthenticated" }),
+    "/customer/login",
+  );
+  assert.equal(
+    storefrontAccountRoute({
+      kind: "staff",
+      userId: USER_ID,
+      organizationId: ORG_ID,
+      role: "OWNER",
+    }),
+    "/dashboard",
+  );
+  assert.equal(
+    storefrontAccountRoute({ kind: "unresolved", userId: USER_ID }),
+    "/dashboard",
+  );
+  assert.equal(
+    storefrontAccountRoute({
+      kind: "customer",
+      userId: USER_ID,
+      organizationId: ORG_ID,
+      customerId: CUSTOMER_ID,
+    }),
+    "/account",
+  );
 });

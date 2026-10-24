@@ -49,12 +49,12 @@ export function AddToCartForm({
 }
 
 // Anonymous shoppers never get a server cart (brief section 13) — this
-// routes them to the existing login boundary instead of silently doing
+// routes them to the customer sign-in instead of silently doing
 // nothing or throwing.
 export function LoginToAddToCart({ compact = false }: { compact?: boolean }) {
   return (
     <Link
-      href="/login"
+      href="/customer/login"
       className={
         compact
           ? "inline-flex items-center gap-1.5 rounded-lg border border-kantira-navy-200 px-3 py-1.5 text-xs font-medium text-kantira-navy-700 hover:bg-kantira-navy-50"

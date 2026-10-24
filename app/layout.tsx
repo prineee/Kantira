@@ -10,8 +10,8 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "KANTIRA",
-  description: "Hospital apparel catalogue and online storefront by KANTIRA.",
+  title: "KANTIRA Business OS",
+  description: "Internal business management platform for KANTIRA.",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { LogOut, Search, ShoppingBag, ShoppingCart, User } from "lucide-react";
-import { resolveIdentity } from "@/lib/auth/resolve-identity";
+import { resolveIdentity, storefrontAccountRoute } from "@/lib/auth/resolve-identity";
 import { signOut } from "@/app/dashboard/actions";
 import { createClient } from "@/lib/supabase/server";
 import { getCartItemCount } from "@/lib/data/cart-queries";
@@ -107,7 +107,7 @@ export async function StorefrontShell({ children }: { children: React.ReactNode 
               </>
             ) : (
               <Link
-                href="/login"
+                href={storefrontAccountRoute(identity)}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-brand-royal px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-[#0f4fd6]"
               >
                 <User size={16} />
@@ -145,6 +145,9 @@ export async function StorefrontShell({ children }: { children: React.ReactNode 
               </Link>
               <Link href="/account" className="hover:text-white">
                 Account
+              </Link>
+              <Link href="/login" className="hover:text-white">
+                Staff login
               </Link>
             </nav>
           </div>

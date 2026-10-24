@@ -107,6 +107,16 @@ export function experienceHomeRoute(identity: ResolvedIdentity): string {
   }
 }
 
+// Where the storefront's account button/link sends an identity. Anonymous
+// shoppers go to the customer sign-in (the storefront audience); every
+// signed-in identity keeps its existing home route. Staff sign in through
+// /login, which the storefront footer links to separately.
+export function storefrontAccountRoute(identity: ResolvedIdentity): string {
+  return identity.kind === "unauthenticated"
+    ? "/customer/login"
+    : experienceHomeRoute(identity);
+}
+
 // Where the public root URL (/) sends an identity instead of rendering the
 // public landing page. Only internal identities (staff, and an unresolved
 // authenticated user) are redirected, to the same destination as
