@@ -65,12 +65,6 @@ export async function StorefrontShell({ children }: { children: React.ReactNode 
               Categories
             </Link>
             <Link
-              href="/catalogue"
-              className="rounded-lg px-3 py-2 hover:bg-kantira-navy-50"
-            >
-              Catalogue
-            </Link>
-            <Link
               href="/search"
               className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 hover:bg-kantira-navy-50"
             >

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   resolveIdentityFrom,
   experienceHomeRoute,
+  rootRedirectForIdentity,
   cartAffordanceForIdentity,
   type IdentitySupabaseClient,
 } from "./resolve-identity";
@@ -134,4 +135,30 @@ test("cartAffordanceForIdentity: only a customer gets 'add', staff/unresolved ge
     cartAffordanceForIdentity({ kind: "unresolved", userId: USER_ID }),
     "none",
   );
+});
+
+test("rootRedirectForIdentity: staff and unresolved leave / for /dashboard; customers and anonymous visitors stay on the public page", () => {
+  assert.equal(
+    rootRedirectForIdentity({
+      kind: "staff",
+      userId: USER_ID,
+      organizationId: ORG_ID,
+      role: "OWNER",
+    }),
+    "/dashboard",
+  );
+  assert.equal(
+    rootRedirectForIdentity({ kind: "unresolved", userId: USER_ID }),
+    "/dashboard",
+  );
+  assert.equal(
+    rootRedirectForIdentity({
+      kind: "customer",
+      userId: USER_ID,
+      organizationId: ORG_ID,
+      customerId: CUSTOMER_ID,
+    }),
+    null,
+  );
+  assert.equal(rootRedirectForIdentity({ kind: "unauthenticated" }), null);
 });

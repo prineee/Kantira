@@ -8,6 +8,8 @@ export const metadata = {
   title: "Hospital Apparel Catalogue | KANTIRA",
   description:
     "Explore KANTIRA hospital apparel, including scrub suits, surgical gowns, doctors' lab coats and fabric colour references.",
+  // The same landing page is served at / and /catalogue; / is the canonical URL.
+  alternates: { canonical: "/" },
 };
 
 const categories = [
