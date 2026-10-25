@@ -19,8 +19,29 @@ test("storefront root and section routes are public", () => {
     "/search",
     "/products",
     "/products/abc-123",
+    "/catalogue",
+    "/catalogue/",
   ]) {
     assert.equal(isPublicStorefrontPath(path), true, path);
+  }
+});
+
+test("the catalogue PDF is public by exact path only", () => {
+  assert.equal(
+    isPublicStorefrontPath("/assets/catalogue/KANTIRA_Digital_Hospital_Apparel_Catalogue.pdf"),
+    true,
+  );
+  for (const path of [
+    "/assets",
+    "/assets/catalogue",
+    "/assets/catalogue/",
+    "/assets/catalogue/other.pdf",
+    "/assets/catalogue/KANTIRA_Digital_Hospital_Apparel_Catalogue.pdf/extra",
+    "/assets/catalogue/kantira_digital_hospital_apparel_catalogue.pdf",
+    "/assets/catalogue/KANTIRA_Digital_Hospital_Apparel_Catalogue.pdf.bak",
+    "/assets/private/KANTIRA_Digital_Hospital_Apparel_Catalogue.pdf",
+  ]) {
+    assert.equal(isPublicStorefrontPath(path), false, path);
   }
 });
 
@@ -42,6 +63,8 @@ test("internal and customer-account routes stay gated", () => {
 test("does not match unrelated paths with a shared prefix", () => {
   assert.equal(isPublicStorefrontPath("/shopping-list"), false);
   assert.equal(isPublicStorefrontPath("/searchindex"), false);
+  assert.equal(isPublicStorefrontPath("/catalogues"), false);
+  assert.equal(isPublicStorefrontPath("/catalogue-admin"), false);
 });
 
 test("isApiRoute matches every app/api path, including the Razorpay webhook", () => {

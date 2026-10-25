@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "KANTIRA Business OS",
+    name: "KANTIRA",
     short_name: "KANTIRA",
-    description: "Internal business management platform for Mapway Technologies Pvt. Ltd.",
+    description: "Hospital apparel catalogue and online storefront by KANTIRA.",
     start_url: "/",
     display: "standalone",
     background_color: "#0A1B3D",

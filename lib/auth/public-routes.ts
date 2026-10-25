@@ -14,10 +14,21 @@ const PUBLIC_STOREFRONT_PATH_PREFIXES = [
   "/categories",
   "/search",
   "/products",
+  // Public hospital-apparel catalogue page for customers and prospective buyers.
+  "/catalogue",
 ] as const;
+
+// Static documents served from public/ that logged-out visitors must be able to
+// open. The middleware matcher only skips image extensions, so a PDF request
+// reaches the session check and would otherwise be redirected to /login.
+// Exact paths only, never a prefix: no other file under /assets becomes public.
+const PUBLIC_STATIC_DOCUMENT_PATHS: readonly string[] = [
+  "/assets/catalogue/KANTIRA_Digital_Hospital_Apparel_Catalogue.pdf",
+];
 
 export function isPublicStorefrontPath(pathname: string): boolean {
   if (pathname === "/") return true;
+  if (PUBLIC_STATIC_DOCUMENT_PATHS.includes(pathname)) return true;
   return PUBLIC_STOREFRONT_PATH_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
